@@ -1,0 +1,64 @@
+:root {
+  --bg: #f5f6fa; --card: #fff; --text: #1f2330; --muted: #6b7280; --line: #e5e7eb;
+  --accent: #4f46e5; --red: #e5484d; --yellow: #f5a524; --green: #30a46c; --grey: #a1a1aa;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+
+header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+  padding: 16px 28px; background: var(--card); border-bottom: 1px solid var(--line); }
+h1 { margin: 0; font-size: 26px; color: var(--accent); }
+.tagline { margin: 2px 0 0; color: var(--muted); }
+.header-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.badge { background: #eef2ff; color: var(--accent); padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+
+main { display: grid; grid-template-columns: 320px 1fr; gap: 24px; padding: 24px 28px; max-width: 1200px; margin: auto; }
+@media (max-width: 800px) { main { grid-template-columns: 1fr; padding: 16px; } }
+
+aside { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; height: fit-content; }
+h2 { margin: 0 0 12px; font-size: 18px; }
+.drop { display: block; border: 2px dashed #c7cbe0; border-radius: 12px; padding: 26px 12px; text-align: center;
+  cursor: pointer; color: var(--muted); }
+.drop.over, .drop:hover { border-color: var(--accent); background: #f5f5ff; }
+textarea, select, input { width: 100%; font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; margin-top: 10px; }
+.field { display: block; margin-top: 10px; font-size: 14px; color: var(--muted); }
+button { font: inherit; border: 0; background: var(--accent); color: #fff; padding: 9px 16px; border-radius: 8px; cursor: pointer; }
+button:disabled { opacity: .6; cursor: wait; }
+button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+#process { width: 100%; margin-top: 12px; }
+.status { margin-top: 10px; font-size: 14px; color: var(--muted); }
+.status.error { color: var(--red); }
+.log { padding-left: 18px; font-size: 13px; color: var(--muted); }
+
+.ask { display: flex; gap: 8px; }
+.ask input { margin: 0; }
+.answer { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px;
+  padding: 12px 14px; white-space: pre-wrap; font-family: inherit; }
+
+.board { display: grid; gap: 14px; margin-top: 16px; }
+.empty { color: var(--muted); text-align: center; padding: 40px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.card.child { margin-left: 28px; border-style: dashed; }
+.card h3 { margin: 0; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.dot.red { background: var(--red); } .dot.yellow { background: var(--yellow); }
+.dot.green { background: var(--green); } .dot.grey { background: var(--grey); }
+.type { font-size: 12px; color: var(--muted); font-weight: 500; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.meta { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
+.for { font-size: 13px; color: var(--accent); margin: 4px 0 0; }
+
+.conflict { background: #fff1f1; border: 1px solid #f5c2c4; border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+.conflict strong { color: var(--red); }
+.conflict .choices { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.conflict button { background: #fff; color: var(--text); border: 1px solid #f5c2c4; }
+.conflict button.suggested { border: 2px solid var(--green); }
+
+details { margin-top: 8px; font-size: 14px; }
+summary { cursor: pointer; color: var(--muted); }
+details ul { margin: 6px 0; padding-left: 18px; }
+details li { margin: 6px 0; }
+.quote { display: block; font-style: italic; color: #374151; }
+.tag { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
+.tag.ok { background: #e6f6ee; color: var(--green); }
+.tag.check { background: #fff5e0; color: #b7791f; }
+a { color: var(--accent); }

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LifeOS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>LifeOS</h1>
+      <p class="tagline">Drop everything. We'll organize it, and show you why.</p>
+    </div>
+    <div class="header-right">
+      <span id="badge" class="badge">Powered by … · open-weight model via Gemini API</span>
+      <button id="reset" class="ghost">Reset demo</button>
+    </div>
+  </header>
+
+  <main>
+    <aside>
+      <h2>Drop zone</h2>
+      <label id="drop" class="drop">
+        <input type="file" id="file" accept=".png,.jpg,.jpeg,.pdf" hidden>
+        <span id="drop-text">Drop an image or PDF here<br><small>or click to choose</small></span>
+      </label>
+      <textarea id="text" rows="4" placeholder="…or paste text here"></textarea>
+      <label class="field">Where is this from?
+        <select id="source">
+          <option value="official">Official notice</option>
+          <option value="teacher">Teacher</option>
+          <option value="classmate">Classmate</option>
+          <option value="note">My note</option>
+        </select>
+      </label>
+      <button id="process">Process</button>
+      <div id="status" class="status"></div>
+      <ul id="log" class="log"></ul>
+    </aside>
+
+    <section>
+      <form id="ask-form" class="ask">
+        <input id="question" placeholder="Ask: What do I need to do before Tuesday?">
+        <button>Ask</button>
+      </form>
+      <pre id="answer" class="answer" hidden></pre>
+      <div id="board" class="board"></div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
