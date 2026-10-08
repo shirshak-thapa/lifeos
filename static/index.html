@@ -3,51 +3,116 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
   <title>LifeOS</title>
+  <link rel="icon" type="image/png" href="logo-64.png">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <header>
-    <div>
-      <h1>LifeOS</h1>
-      <p class="tagline">Drop everything. We'll organize it, and show you why.</p>
-    </div>
-    <div class="header-right">
-      <span id="badge" class="badge">Powered by … · open-weight model via Gemini API</span>
-      <button id="reset" class="ghost">Reset demo</button>
+<body data-tab="timeline">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="LifeOS home">
+      <img class="badge" src="logo-badge.png" alt="" width="40" height="40">
+      <span class="wordmark"><span class="wm-life">Life</span><span class="wm-os">OS</span></span>
+      <span class="tagline">One system for a better you</span>
+    </a>
+    <div class="topbar-right">
+      <span class="model-pill" id="model-pill" title="The open-weight model that reads and organizes your sources">
+        <span class="pill-dot" aria-hidden="true"></span><span id="model-name">gemma</span> · open weights
+      </span>
+      <button class="btn-quiet" id="reset" type="button"><span data-icon="reset"></span>Reset demo</button>
     </div>
   </header>
 
-  <main>
-    <aside>
-      <h2>Drop zone</h2>
-      <label id="drop" class="drop">
-        <input type="file" id="file" accept=".png,.jpg,.jpeg,.pdf" hidden>
-        <span id="drop-text">Drop an image or PDF here<br><small>or click to choose</small></span>
-      </label>
-      <textarea id="text" rows="4" placeholder="…or paste text here"></textarea>
-      <label class="field">Where is this from?
-        <select id="source">
-          <option value="official">Official notice</option>
-          <option value="teacher">Teacher</option>
-          <option value="classmate">Classmate</option>
-          <option value="note">My note</option>
-        </select>
-      </label>
-      <button id="process">Process</button>
-      <div id="status" class="status"></div>
-      <ul id="log" class="log"></ul>
-    </aside>
+  <nav class="tabs" aria-label="Sections">
+    <button type="button" data-tab="inbox">Inbox</button>
+    <button type="button" data-tab="timeline">Timeline</button>
+    <button type="button" data-tab="evidence">Evidence</button>
+  </nav>
 
-    <section>
-      <form id="ask-form" class="ask">
-        <input id="question" placeholder="Ask: What do I need to do before Tuesday?">
-        <button>Ask</button>
-      </form>
-      <pre id="answer" class="answer" hidden></pre>
-      <div id="board" class="board"></div>
+  <main class="desk">
+    <!-- 1. INBOX -->
+    <section class="zone inbox" id="zone-inbox" aria-label="Inbox">
+      <div class="progress" id="progress" aria-hidden="true"></div>
+      <h2 class="label">Inbox</h2>
+
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
+        <span class="drop-empty" id="drop-empty">
+          <span data-icon="upload"></span>
+          <strong>Drop a screenshot, poster or PDF</strong>
+          <small>click to choose · or Ctrl+V a screenshot</small>
+        </span>
+        <span class="drop-file" id="drop-file" hidden>
+          <img id="drop-thumb" alt="" hidden>
+          <span class="drop-icon" id="drop-icon" data-icon="file"></span>
+          <span class="drop-meta"><strong id="drop-name"></strong><small id="drop-size"></small></span>
+        </span>
+      </label>
+      <button class="link-btn" id="drop-clear" type="button" hidden>Remove file</button>
+
+      <textarea id="text" rows="3" placeholder="…or paste text from a chat, email or notice"></textarea>
+
+      <p class="label seg-label" id="source-label">Where is this from?</p>
+      <div class="segmented" id="source" role="radiogroup" aria-labelledby="source-label">
+        <label><input type="radio" name="source" value="official"><span>Official notice<i class="rank" data-rank="4"></i></span></label>
+        <label><input type="radio" name="source" value="teacher"><span>Teacher<i class="rank" data-rank="3"></i></span></label>
+        <label><input type="radio" name="source" value="classmate" checked><span>Classmate<i class="rank" data-rank="2"></i></span></label>
+        <label><input type="radio" name="source" value="note"><span>My note<i class="rank" data-rank="1"></i></span></label>
+      </div>
+
+      <button class="btn-primary" id="process" type="button">Process</button>
+
+      <ol class="stepper" id="stepper" hidden>
+        <li>Reading</li><li>Extracting</li><li>Matching</li><li>Verifying</li>
+        <li class="elapsed" id="elapsed">0.0s</li>
+      </ol>
+      <p class="error" id="error" role="alert" hidden></p>
+      <div class="results" id="results"></div>
+      <ul class="log" id="log"></ul>
+
+      <div class="demo" id="demo" hidden>
+        <h2 class="label">Demo story</h2>
+        <ol class="demo-steps" id="demo-steps"></ol>
+      </div>
     </section>
+
+    <!-- 2. TIMELINE -->
+    <section class="zone timeline" id="zone-timeline" aria-label="Timeline">
+      <form class="cmd" id="ask-form" role="search">
+        <span data-icon="search"></span>
+        <input id="question" autocomplete="off" maxlength="300" placeholder="Ask your list anything…" aria-label="Ask a question about your list">
+        <kbd>Enter</kbd>
+      </form>
+      <div class="examples" id="examples">
+        <button type="button">What do I need to do before Tuesday?</button>
+        <button type="button">What is due this week?</button>
+        <button type="button">Which dates are not confirmed?</button>
+      </div>
+      <div class="answer" id="answer" hidden>
+        <div class="answer-head"><span class="label">Answer · from your list only</span>
+          <button class="link-btn" id="answer-close" type="button">Close</button></div>
+        <div class="answer-body" id="answer-body"></div>
+      </div>
+
+      <div class="rail" id="board" role="listbox" aria-label="Tasks and events"></div>
+      <div class="empty" id="empty" hidden>
+        <img src="logo-badge.png" alt="LifeOS" width="120" height="120">
+        <ol>
+          <li><span>01</span>Drop it in.</li>
+          <li><span>02</span>We read it.</li>
+          <li><span>03</span>You see the evidence.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 3. EVIDENCE -->
+    <aside class="zone evidence" id="zone-evidence" aria-label="Evidence">
+      <div id="evidence"><p class="hint">Select a row to see where it came from.</p></div>
+    </aside>
   </main>
+
+  <dialog class="lightbox" id="lightbox"><img id="lightbox-img" alt=""><p>Click anywhere to close</p></dialog>
+  <div class="sr-only" id="live" aria-live="polite"></div>
   <script src="app.js"></script>
 </body>
 </html>

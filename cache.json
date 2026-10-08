@@ -75,6 +75,37 @@
    "verdict": "conflict"
   }
  ],
+ "match:3b73926f64bfae77774d19ae": {
+  "match_id": "item1",
+  "reason": "The new item refers to the same physics assignment but provides a different deadline date than the existing entry.",
+  "verdict": "conflict"
+ },
+ "match:463f5abcd4f7740a4ed6617d": [
+  {
+   "match_id": "item1",
+   "reason": "The task is the same subject but provides a different due date without indicating a change.",
+   "verdict": "conflict"
+  }
+ ],
+ "match:53933fb4dab448b3f4013ead": {
+  "match_id": "item2",
+  "reason": "The new item is the same event as item2 but adds specific time and location details.",
+  "verdict": "same"
+ },
+ "match:53c2217fe287f0613d4aaf26": [
+  {
+   "match_id": "item1",
+   "reason": "The new item is a deadline for the physics assignment and the quote explicitly states the date has been extended.",
+   "verdict": "update"
+  }
+ ],
+ "match:6790c965d83764126263fe63": [
+  {
+   "match_id": "item2",
+   "reason": "The task is a preparatory step for the existing Physics presentation.",
+   "verdict": "related"
+  }
+ ],
  "match:73fcbafbe622e8d56a96e375": {
   "match_id": "item1",
   "reason": "The new item refers to the physics assignment and the quote explicitly states the deadline has been extended.",
@@ -84,6 +115,13 @@
   {
    "match_id": null,
    "reason": "A physics assignment and a physics presentation are different types of academic requirements.",
+   "verdict": "new"
+  }
+ ],
+ "match:d11a9631bd8a8f0b2e9abf53": [
+  {
+   "match_id": null,
+   "reason": "The new item is a presentation, which is a different type of activity than a written assignment submission.",
    "verdict": "new"
   }
  ],

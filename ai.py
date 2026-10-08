@@ -3,14 +3,17 @@ import hashlib
 import json
 import os
 import re
+import threading
 import time
 
 from google import genai
 from google.genai import types
 
+import logic
 import settings
 
 _client = None
+_client_lock = threading.Lock()
 last_model_used = settings.MAIN_MODEL
 
 
@@ -19,12 +22,28 @@ class AIError(Exception):
 
 
 # ---------- cache (cache.json): only hashes + model answers, never the API key ----------
+# Kept in memory (read once) and written atomically, so lookups are instant.
 
-def _cache_load():
-    if os.path.exists(settings.CACHE_FILE):
-        with open(settings.CACHE_FILE, encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+_cache = None
+_cache_lock = threading.Lock()
+
+
+def _cache_get(key):
+    global _cache
+    with _cache_lock:
+        if _cache is None:
+            try:
+                with open(settings.CACHE_FILE, encoding="utf-8") as f:
+                    _cache = json.load(f)
+            except (OSError, ValueError):
+                _cache = {}
+        return _cache.get(key)
+
+
+def _cache_put(key, value):
+    with _cache_lock:
+        _cache[key] = value
+        logic.atomic_write(settings.CACHE_FILE, _cache)
 
 
 def _cache_key(step, *parts):
@@ -34,22 +53,16 @@ def _cache_key(step, *parts):
     return f"{step}:{h.hexdigest()[:24]}"
 
 
-def _cache_save(key, value):
-    cache = _cache_load()
-    cache[key] = value
-    with open(settings.CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(cache, f, indent=1, ensure_ascii=False, sort_keys=True)
-
-
 # ---------- calling the model ----------
 
 def _client_get():
     global _client
-    if _client is None:
-        if not settings.API_KEY:
-            raise AIError("No API key found. Copy .env.example to .env and add your GEMINI_API_KEY.")
-        _client = genai.Client(api_key=settings.API_KEY, http_options=types.HttpOptions(timeout=90000))
-    return _client
+    with _client_lock:
+        if _client is None:
+            if not settings.API_KEY:
+                raise AIError("No API key found. Copy .env.example to .env and add your GEMINI_API_KEY.")
+            _client = genai.Client(api_key=settings.API_KEY, http_options=types.HttpOptions(timeout=60000))
+        return _client
 
 
 def _friendly(e):
@@ -86,9 +99,12 @@ def _generate(contents, want_json):
                 raise
             except Exception as e:  # rate limit, network, server error...
                 last_error = e
-                print(f"[ai] {model} attempt {attempt + 1} failed: {type(e).__name__} {str(e)[:120]}")
+                msg = str(e)
+                print(f"[ai] {model} attempt {attempt + 1} failed: {type(e).__name__} {msg[:120]}")
+                if "400" in msg or "403" in msg or "404" in msg:
+                    break  # a bad request won't fix itself -> go straight to the backup model
                 if attempt == 0:
-                    time.sleep(8)
+                    time.sleep(6 if "429" in msg else 2)
         print(f"[ai] {model} failed, trying backup model")
     raise AIError(_friendly(last_error))
 
@@ -104,7 +120,7 @@ def ask_model(step, prompt, image=None, mime=None, want_json=True):
     """One AI step with caching. JSON answers are parsed; bad JSON gets one retry."""
     key = _cache_key(step, prompt, image or b"")
     if settings.CACHE_ENABLED:
-        cached = _cache_load().get(key)
+        cached = _cache_get(key)
         if cached is not None:
             return cached
     contents = [types.Part.from_bytes(data=image, mime_type=mime), prompt] if image else prompt
@@ -122,7 +138,8 @@ def ask_model(step, prompt, image=None, mime=None, want_json=True):
     if result is None:
         raise AIError("The AI gave an answer we could not understand. Please try again.")
     if settings.CACHE_ENABLED:
-        _cache_save(key, result)
+        _cache_get(key)  # make sure the cache is loaded before adding to it
+        _cache_put(key, result)
     return result
 
 
@@ -152,7 +169,7 @@ TEXT:
 \"\"\"{source_text}\"\"\""""
     data = ask_model("extract", prompt)
     items = data.get("items", []) if isinstance(data, dict) else data
-    return [i for i in items if isinstance(i, dict) and i.get("title")]
+    return items if isinstance(items, list) else []
 
 
 def match(new_item, existing_items):
@@ -174,12 +191,7 @@ Important: first decide if the NEW ITEM is about the SAME THING as an existing i
 Names may differ a little ("physics assignment" = "Physics Assignment 3 Submission", "Presentation Day" = "presentation").
 A different date does NOT make it a different thing: same thing + different date is "update" or "conflict", never "new".
 Return ONE JSON object: {{"match_id": id of the existing item or null, "verdict": "...", "reason": one short sentence}}"""
-    data = ask_model("match", prompt)
-    if isinstance(data, list) and data:
-        data = data[0]  # the model sometimes wraps the object in a list
-    if not isinstance(data, dict) or data.get("verdict") not in ("new", "same", "update", "conflict", "related"):
-        return {"verdict": "new", "match_id": None, "reason": "unclear answer from AI, added as new"}
-    return data
+    return logic.clean_verdict(ask_model("match", prompt))
 
 
 def answer(question, items):

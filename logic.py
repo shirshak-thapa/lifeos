@@ -1,28 +1,116 @@
-"""Plain Python (no AI): storage, quote verification and the rules that apply AI verdicts."""
+"""Plain Python (no AI): storage, validation, quote verification and the rules that apply AI verdicts."""
 import json
 import os
 import re
+import threading
+import time
 from datetime import date
 
 import settings
 
+# One lock around every load -> modify -> save, so two requests never overwrite each other.
+LOCK = threading.RLock()
 
-# ---------- storage (one JSON file) ----------
+
+# ---------- storage (one JSON file, written atomically) ----------
+
+def atomic_write(path, obj):
+    """Write to a temp file first, then swap it in, so a crash never leaves a half-written file."""
+    tmp = f"{path}.{os.getpid()}.{threading.get_ident()}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=1, ensure_ascii=False, sort_keys=path == settings.CACHE_FILE)
+    for attempt in range(5):  # Windows can briefly lock a file that is being read
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            time.sleep(0.05 * (attempt + 1))
+    os.replace(tmp, path)
+
+
+def empty_db():
+    return {"items": [], "next_id": 1, "order": 0, "seen": {}}
+
 
 def load():
     if not os.path.exists(settings.DATA_FILE):
-        return {"items": [], "next_id": 1, "order": 0}
-    with open(settings.DATA_FILE, encoding="utf-8") as f:
-        return json.load(f)
+        return empty_db()
+    try:
+        with open(settings.DATA_FILE, encoding="utf-8") as f:
+            db = json.load(f)
+    except (ValueError, OSError):
+        return empty_db()
+    for key, value in empty_db().items():
+        db.setdefault(key, value)
+    return db
 
 
 def save(db):
-    with open(settings.DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(db, f, indent=2, ensure_ascii=False)
+    atomic_write(settings.DATA_FILE, db)
 
 
 def reset():
-    save({"items": [], "next_id": 1, "order": 0})
+    with LOCK:
+        save(empty_db())
+
+
+# ---------- validation: never trust model output ----------
+
+def clean_text(value, limit, collapse=True):
+    if value is None or isinstance(value, (dict, list)):
+        return None
+    s = str(value).strip()
+    if collapse:
+        s = re.sub(r"\s+", " ", s)
+    if s.lower() in ("", "null", "none", "n/a", "unknown"):
+        return None
+    return s[:limit]
+
+
+def clean_date(value):
+    s = clean_text(value, 10)
+    if not s or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return None
+    try:
+        date.fromisoformat(s)
+        return s
+    except ValueError:
+        return None
+
+
+def clean_time(value):
+    m = re.fullmatch(r"(\d{1,2}):(\d{2})(?::\d{2})?", clean_text(value, 8) or "")
+    if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
+        return None
+    return f"{int(m.group(1)):02d}:{m.group(2)}"
+
+
+def clean_item(raw):
+    """Return a safe item dict, or None if it has no usable title."""
+    if not isinstance(raw, dict):
+        return None
+    title = clean_text(raw.get("title"), 120)
+    if not title or not re.search(r"[A-Za-z0-9]", title):
+        return None
+    kind = str(raw.get("type") or "").strip().lower()
+    return {
+        "title": title,
+        "type": kind if kind in ("task", "event") else "task",
+        "date": clean_date(raw.get("date")),
+        "time": clean_time(raw.get("time")),
+        "location": clean_text(raw.get("location"), 100),
+        "quote": clean_text(raw.get("quote"), 600, collapse=False) or "",  # keep line breaks: it must match the source
+    }
+
+
+def clean_verdict(raw):
+    if isinstance(raw, list) and raw:
+        raw = raw[0]  # the model sometimes wraps the object in a list
+    if not isinstance(raw, dict):
+        raw = {}
+    verdict = raw.get("verdict") if raw.get("verdict") in ("new", "same", "update", "conflict", "related") else "new"
+    match_id = raw.get("match_id") if isinstance(raw.get("match_id"), str) else None
+    return {"verdict": verdict, "match_id": match_id, "reason": clean_text(raw.get("reason"), 200) or ""}
 
 
 # ---------- helpers ----------
@@ -43,29 +131,38 @@ def find(db, item_id):
     return next((i for i in db["items"] if i["id"] == item_id), None)
 
 
-def norm(text):
-    """Lowercase and squash all whitespace, so small formatting differences don't matter."""
-    return re.sub(r"\s+", " ", (text or "")).strip().lower()
+def find_span(phrase, text):
+    """[start, end] of phrase inside text, ignoring case and extra whitespace. None if not found."""
+    words = (phrase or "").split()
+    if not words or not text:
+        return None
+    m = re.search(r"\s+".join(re.escape(w) for w in words), text, re.IGNORECASE)
+    return [m.start(), m.end()] if m else None
 
 
 def verify_quote(quote, source_text):
     """True if the quote really appears in the source text (ignoring case and extra spaces)."""
-    q = norm(quote)
-    return bool(q) and q in norm(source_text)
+    return find_span(quote, source_text) is not None
 
 
 # ---------- applying the AI's verdict ----------
 
-def make_source(src, ext):
-    """One 'source' entry shown under a card: where it came from + the exact quote."""
+def make_source(src, ext, text):
+    """One 'source' entry: where it came from, the full text it was read from, and the exact quote."""
     return {
-        "file": src["file"],
+        "file": src["file"],            # original (cleaned) file name
+        "stored": src["stored"],        # name on disk in uploads/
         "url": src["url"],
+        "kind": src["kind"],            # image / pdf / text
+        "hash": src["hash"],
         "source_type": src["label"],
         "rank": src["rank"],
         "order": src["order"],
-        "quote": ext.get("quote") or "",
+        "quote": ext["quote"],
         "verified": ext["verified"],
+        "quote_span": find_span(ext["quote"], text),
+        "place_span": find_span(ext.get("location"), text),
+        "source_text": text[:8000],
         "date": ext.get("date"),
         "time": ext.get("time"),
     }
@@ -76,92 +173,94 @@ def suggest(options):
     return max(range(len(options)), key=lambda i: (options[i]["rank"], options[i]["order"]))
 
 
-def apply(db, ext, verdict, src):
-    """Apply one extracted item to the board. Returns a short log line. Never deletes anything."""
-    v = verdict.get("verdict", "new")
+def _change(kind, item, text):
+    item["last_change"], item["changed_order"] = kind, item["sources"][-1]["order"]
+    return {"kind": kind, "item_id": item["id"], "text": text}
+
+
+def apply(db, ext, verdict, src, text):
+    """Apply one extracted item to the board. Returns a change dict. Never deletes anything."""
+    v = verdict["verdict"]
     target = find(db, verdict.get("match_id"))
     if v != "new" and target is None:
         v = "new"  # AI pointed at an item that doesn't exist -> safest is to add it as new
-    s = make_source(src, ext)
+    s = make_source(src, ext, text)
 
     # Safety rules on top of the AI verdict (plain Python double-check)
-    if target and v == "same" and ext.get("date") and target.get("date") and ext["date"] != target["date"]:
+    if target and v == "same" and ext["date"] and target["date"] and ext["date"] != target["date"]:
         v = "conflict"  # "same" but the date is different -> let the user decide
-    if target and v in ("update", "conflict") and ext.get("date") == target.get("date") \
-            and (not ext.get("time") or ext.get("time") == target.get("time")):
+    if target and v in ("update", "conflict") and (
+            (not ext["date"] and not ext["time"]) or
+            (ext["date"] == target["date"] and (not ext["time"] or ext["time"] == target["time"]))):
         v = "same"  # nothing actually differs
 
-    if v == "new" or v == "related":
+    if v in ("new", "related"):
         item = {
             "id": f"item{db['next_id']}",
-            "title": ext["title"],
-            "type": ext.get("type") or "task",
-            "date": ext.get("date"),
-            "time": ext.get("time"),
-            "location": ext.get("location"),
-            "status": "ok",
+            "title": ext["title"], "type": ext["type"], "date": ext["date"], "time": ext["time"],
+            "location": ext["location"], "status": "ok",
             "parent_id": target["id"] if v == "related" else None,
-            "sources": [s],
-            "date_source": 0,  # which source set the current date
-            "conflict": None,
-            "history": [f"Created from {src['file']} ({nice_date(ext.get('date'))})"],
+            "sources": [s], "date_source": 0, "conflict": None, "updated": False,
+            "history": [f"Created from {src['file']} ({nice_date(ext['date'])})"],
         }
         db["next_id"] += 1
         db["items"].append(item)
         if v == "related":
             item["history"].append(f"Linked to \"{target['title']}\"")
-            return f"related: \"{item['title']}\" (for \"{target['title']}\")"
-        return f"new: \"{item['title']}\" on {nice_date(item['date'])}"
+            return _change("related", item, f"\"{item['title']}\" (for \"{target['title']}\")")
+        return _change("new", item, f"\"{item['title']}\" on {nice_date(item['date'])}")
 
     target["sources"].append(s)
 
     if v == "same":
         added = []
         for field in ("time", "location"):
-            if ext.get(field) and not target.get(field):
+            if ext[field] and not target.get(field):
                 target[field] = ext[field]
                 added.append(f"{field} {ext[field]}")
-        if ext.get("date") and not target.get("date"):
+        if ext["date"] and not target["date"]:
             target["date"] = ext["date"]
             added.append(f"date {nice_date(ext['date'])}")
         extra = f", added {', '.join(added)}" if added else ""
         target["history"].append(f"Confirmed by {src['file']}{extra}")
-        return f"same: \"{target['title']}\"{extra}"
+        return _change("same", target, f"\"{target['title']}\"{extra}")
 
     if v == "update":
         old = when(target["date"], target["time"])
-        target["date"] = ext.get("date") or target["date"]
-        target["time"] = ext.get("time") or target["time"]
-        if ext.get("location"):
+        target["date"] = ext["date"] or target["date"]
+        target["time"] = ext["time"] or target["time"]
+        if ext["location"]:
             target["location"] = ext["location"]
         target["date_source"] = len(target["sources"]) - 1
         note = " (open conflict closed)" if target["status"] == "conflict" else ""
-        target["status"], target["conflict"] = "ok", None
+        target["status"], target["conflict"], target["updated"] = "ok", None, True
         target["history"].append(f"{old} -> {when(target['date'], target['time'])} ({src['file']}){note}")
-        return f"update: \"{target['title']}\" {old} -> {when(target['date'], target['time'])}"
+        return _change("update", target, f"\"{target['title']}\" {old} -> {when(target['date'], target['time'])}")
 
-    # conflict: keep both dates with their sources, suggest one, let the user choose
-    old_src = target["sources"][target.get("date_source", 0)]
-    options = [
-        {"date": target["date"], "time": target["time"], "file": old_src["file"],
-         "source_type": old_src["source_type"], "rank": old_src["rank"], "order": old_src["order"],
-         "source_index": target.get("date_source", 0)},
-        {"date": ext.get("date"), "time": ext.get("time"), "file": src["file"],
-         "source_type": src["label"], "rank": src["rank"], "order": src["order"],
-         "source_index": len(target["sources"]) - 1},
-    ]
+    # conflict: keep every date with its source, suggest one, let the user choose
+    new_opt = {"date": ext["date"], "time": ext["time"], "file": src["file"], "source_type": src["label"],
+               "rank": src["rank"], "order": src["order"], "source_index": len(target["sources"]) - 1}
+    if target.get("conflict"):
+        options = target["conflict"]["options"]
+    else:
+        old_src = target["sources"][target.get("date_source", 0)]
+        options = [{"date": target["date"], "time": target["time"], "file": old_src["file"],
+                    "source_type": old_src["source_type"], "rank": old_src["rank"], "order": old_src["order"],
+                    "source_index": target.get("date_source", 0)}]
+    if not any(o["date"] == new_opt["date"] and o["time"] == new_opt["time"] for o in options):
+        options.append(new_opt)
     target["status"] = "conflict"
     target["conflict"] = {"options": options, "suggested": suggest(options), "reason": verdict.get("reason", "")}
     target["history"].append(
         f"Conflict: {when(options[0]['date'], options[0]['time'])} ({options[0]['file']}) vs "
-        f"{when(options[1]['date'], options[1]['time'])} ({src['file']})")
-    return f"conflict: \"{target['title']}\" {nice_date(options[0]['date'])} vs {nice_date(options[1]['date'])}"
+        f"{when(new_opt['date'], new_opt['time'])} ({src['file']})")
+    return _change("conflict", target, f"\"{target['title']}\" {nice_date(options[0]['date'])} vs {nice_date(new_opt['date'])}")
 
 
 def resolve(db, item_id, choice):
     """User picked one of the conflicting dates."""
     item = find(db, item_id)
-    if not item or not item.get("conflict"):
+    if not item or not item.get("conflict") or not 0 <= choice < len(item["conflict"]["options"]):
         return None
     opt = item["conflict"]["options"][choice]
     item["date"], item["time"] = opt["date"], opt["time"] or item["time"]
