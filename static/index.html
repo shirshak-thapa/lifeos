@@ -3,97 +3,123 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffe14d">
   <title>LifeOS</title>
   <link rel="icon" type="image/png" href="logo-64.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="top">
-    <div class="wrap top-inner">
+  <!-- The highlighter band: brand, drop tray, deadline runway -->
+  <div class="band">
+    <header class="wrap top">
       <a class="brand" href="/">
-        <img src="logo-64.png" alt="" width="28" height="28">
+        <img src="logo-64.png" alt="" width="34" height="34">
         <span>LifeOS</span>
       </a>
-      <p class="tagline">Drop everything. We'll organize it, and show you why.</p>
       <nav class="top-actions">
-        <a class="text-btn" href="/api/calendar.ics" download id="export">Export to calendar</a>
-        <button class="text-btn" type="button" id="reset">Reset</button>
+        <a class="btn-outline" href="/api/calendar.ics" download id="export" aria-label="Export to calendar"><span data-icon="calendar"></span><span class="label">Export to calendar</span></a>
+        <button class="btn-plain" type="button" id="reset" aria-label="Reset"><span data-icon="reset"></span><span class="label">Reset</span></button>
       </nav>
-    </div>
-  </header>
+    </header>
 
-  <main class="wrap">
-    <!-- Add files -->
-    <section class="intake" aria-labelledby="intake-title">
-      <h1 id="intake-title" class="sr-only">Add files</h1>
-      <div class="drop" id="drop">
-        <input type="file" id="file-input" multiple
-               accept=".pdf,.png,.jpg,.jpeg,.webp,.avif,.gif,.bmp,.tif,.tiff,.txt,.md,application/pdf,image/*,text/plain">
-        <p class="drop-title">Drop PDFs, posters, screenshots or photos here</p>
-        <p class="drop-sub">
-          <button type="button" class="link" id="browse">Choose files</button>
-          · several at once · paste a screenshot with Ctrl+V ·
-          <button type="button" class="link" id="paste-toggle" aria-expanded="false" aria-controls="paste">paste text</button>
-        </p>
+    <section class="wrap hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <h1 id="hero-title">Drop it in.<br>See what's due.</h1>
+        <p class="lede">Notices, posters, chat screenshots and PDFs go in. One plan comes out, and every date shows the line it came from.</p>
       </div>
 
-      <form class="paste" id="paste" hidden>
-        <label for="paste-text" class="sr-only">Text to add</label>
-        <textarea id="paste-text" rows="4" maxlength="20000" placeholder="Paste a message, email or notice…"></textarea>
-        <div class="paste-actions">
-          <button type="submit" class="btn">Add text</button>
-          <button type="button" class="text-btn" id="paste-cancel">Cancel</button>
+      <div class="hero-tray">
+        <div class="tray" id="drop">
+          <input type="file" id="file-input" multiple
+                 accept=".pdf,.png,.jpg,.jpeg,.webp,.avif,.gif,.bmp,.tif,.tiff,.txt,.md,application/pdf,image/*,text/plain">
+          <span class="tray-icon" data-icon="tray"></span>
+          <p class="tray-title">Drop files here</p>
+          <p class="tray-sub">PDF, PNG, JPG, WebP or AVIF · several at once · Ctrl+V pastes a screenshot</p>
+          <div class="tray-actions">
+            <button type="button" class="btn-ink" id="browse">Choose files</button>
+            <button type="button" class="btn-ghost" id="paste-toggle" aria-expanded="false" aria-controls="paste">Paste text</button>
+          </div>
         </div>
-      </form>
 
-      <ol class="queue" id="queue" aria-label="Files being processed"></ol>
+        <form class="paste" id="paste" hidden>
+          <label for="paste-text" class="sr-only">Text to add</label>
+          <textarea id="paste-text" rows="4" maxlength="20000" placeholder="Paste a message, email or notice…"></textarea>
+          <div class="paste-actions">
+            <button type="submit" class="btn-ink">Add text</button>
+            <button type="button" class="btn-plain" id="paste-cancel">Cancel</button>
+          </div>
+        </form>
 
-      <p class="samples" id="samples" hidden>
-        <span>No files handy? Try the samples, in order:</span>
-        <span id="sample-list"></span>
-      </p>
+        <ol class="queue" id="queue" aria-label="Files being read"></ol>
+      </div>
+
+      <div class="samples" id="samples" hidden>
+        <p class="samples-label">No files handy? Add the samples in order:</p>
+        <div class="sample-list" id="sample-list"></div>
+      </div>
     </section>
 
-    <!-- Ask -->
+    <section class="wrap runway-wrap" aria-labelledby="runway-title">
+      <div class="runway-head">
+        <h2 id="runway-title">Next five weeks</h2>
+        <p class="briefing" id="briefing"></p>
+      </div>
+      <div class="runway-scroll">
+        <div class="runway" id="runway"></div>
+      </div>
+    </section>
+  </div>
+
+  <main class="wrap content">
     <section class="ask" aria-labelledby="ask-title">
       <h2 id="ask-title" class="sr-only">Ask about your files</h2>
       <form class="ask-form" id="ask-form">
+        <span class="ask-icon" data-icon="search"></span>
         <label for="question" class="sr-only">Question</label>
         <input id="question" type="search" maxlength="300" autocomplete="off"
-               placeholder="Search or ask about your files, e.g. “What should I bring to the exam?”">
-        <button type="submit" class="btn" id="ask-btn">Ask</button>
+               placeholder="Ask about your files: “What should I bring to the exam?”">
+        <kbd title="Press / to jump here">/</kbd>
+        <button type="submit" class="btn-ink" id="ask-btn">Ask</button>
       </form>
-      <p class="suggest" id="suggest">
-        <button type="button" class="link">What do I need to do before Tuesday?</button>
-        <button type="button" class="link">Which dates are not confirmed?</button>
-        <button type="button" class="link">Summarize my files</button>
-      </p>
+      <div class="suggest" id="suggest">
+        <button type="button" class="chip-btn">What do I need to do before Tuesday?</button>
+        <button type="button" class="chip-btn">Which dates are not confirmed?</button>
+        <button type="button" class="chip-btn">Summarize my files</button>
+      </div>
       <div class="answer" id="answer" hidden aria-live="polite">
+        <div class="answer-head">
+          <span class="answer-label">Answer from your files</span>
+          <button type="button" class="btn-plain small" id="answer-close">Close</button>
+        </div>
         <div class="answer-body" id="answer-body"></div>
         <div class="matches" id="matches"></div>
       </div>
     </section>
 
     <div class="columns">
-      <!-- Plan: one list of everything, by date -->
       <section class="plan" aria-labelledby="plan-title">
-        <h2 id="plan-title">Your plan <span class="count" id="plan-count"></span></h2>
+        <div class="col-head">
+          <h2 id="plan-title">Your plan <span class="count" id="plan-count"></span></h2>
+          <div class="filters" id="filters" role="group" aria-label="Show"></div>
+        </div>
         <div id="plan"></div>
       </section>
 
-      <!-- Files: what was found in each file -->
       <section class="files" aria-labelledby="files-title">
-        <h2 id="files-title">Files <span class="count" id="files-count"></span></h2>
+        <div class="col-head">
+          <h2 id="files-title">Files <span class="count" id="files-count"></span></h2>
+        </div>
         <div id="files"></div>
       </section>
     </div>
   </main>
 
   <footer class="wrap foot">
-    <p>Files are read and organized by <strong id="model-name">Gemma 4</strong>, an open-weight model, through the Gemini API.
-      Quotes are checked against each file by plain code. Relative dates are counted from <span id="demo-date">Mon 12 Oct 2026</span> (demo date).</p>
+    <p>Read and organized by <strong id="model-name">Gemma 4</strong>, an open-weight model, through the Gemini API.
+      Every quote is checked against its file by plain code. Relative dates count from <span id="demo-date">Mon 12 Oct 2026</span>, the demo date.</p>
   </footer>
 
+  <div class="dropmask" id="dropmask" aria-hidden="true"><p id="dropmask-text">Drop to add files</p></div>
   <div class="sr-only" id="live" aria-live="polite"></div>
   <script src="app.js"></script>
 </body>

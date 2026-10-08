@@ -1,15 +1,18 @@
 "use strict";
 // LifeOS front end.
 // Safety: all text that comes from files or from the AI is shown with textContent / text nodes, never innerHTML.
+// innerHTML is only used for our own constant SVG icon paths.
 
 const $ = (id) => document.getElementById(id);
 let DEMO_DATE = "2026-10-12"; // replaced by the backend setting from /api/info
+const RUNWAY_DAYS = 35;       // the runway shows the next five weeks
 
 const state = {
   files: [],
   items: [],
   queue: [],            // files waiting / being read
   running: false,
+  filter: "all",        // plan filter: all | task | event | decide
   open: new Set(),      // plan items the user expanded
   closed: new Set(),    // conflict items the user collapsed
   flash: new Set(),     // plan items changed by the latest file
@@ -17,6 +20,27 @@ const state = {
 };
 
 // ---------- helpers ----------
+
+const ICONS = {
+  tray: '<path d="M4 13.5 6.2 5.6A1.5 1.5 0 0 1 7.6 4.5h8.8a1.5 1.5 0 0 1 1.4 1.1L20 13.5"/><path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20v5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z"/><path d="M12 7v5M9.8 9.8 12 12l2.2-2.2"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
+  reset: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5V9H9"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>',
+  chevron: '<path d="m6 9 6 6 6-6"/>',
+  file: '<path d="M14 3H6.5a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V7.5z"/><path d="M14 3v4.5h4.5"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  alert: '<path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+};
+
+function icon(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", "ico");
+  svg.setAttribute("aria-hidden", "true");
+  svg.innerHTML = ICONS[name] || ""; // constant strings only
+  return svg;
+}
 
 // el("p", {class: "x", text: "hello", onclick: fn}, child, "text child")
 function el(tag, props, ...kids) {
@@ -36,6 +60,7 @@ function el(tag, props, ...kids) {
 }
 
 const str = (v) => (v === null || v === undefined ? "" : String(v));
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function announce(msg) {
   $("live").textContent = "";
@@ -79,6 +104,9 @@ function relLabel(n) {
   return n > 0 ? `in ${n} days` : `${-n} days ago`;
 }
 
+// red = within 3 days, amber = within a week, green = later
+const urgency = (n) => (n === null ? "" : n < 0 ? "past" : n <= 3 ? "hot" : n <= 7 ? "warm" : "cool");
+
 function fmtDate(s) {
   const d = parseDate(s);
   if (!d) return "No date";
@@ -107,8 +135,10 @@ function safeHref(link) {
   return null;
 }
 
+const sel = (cls, attr, id) => document.querySelectorAll(`.${cls}[${attr}="${CSS.escape(str(id))}"]`);
+
 function scrollToFile(fileId) {
-  const card = document.querySelector(`.file[data-id="${CSS.escape(str(fileId))}"]`);
+  const card = sel("file", "data-id", fileId)[0];
   if (!card) return;
   card.scrollIntoView({ behavior: "smooth", block: "start" });
   card.classList.remove("flash");
@@ -117,18 +147,113 @@ function scrollToFile(fileId) {
 }
 
 function scrollToItem(itemId) {
-  const row = document.querySelector(`.item[data-id="${CSS.escape(str(itemId))}"]`);
+  if (state.filter !== "all" && !sel("item", "data-id", itemId).length) setFilter("all");
+  const row = sel("item", "data-id", itemId)[0];
   if (!row) return;
   row.open = true;
+  state.open.add(itemId);
   row.scrollIntoView({ behavior: "smooth", block: "center" });
   row.classList.remove("flash");
   void row.offsetWidth;
   row.classList.add("flash");
 }
 
+// hovering a fact in a file lights up the same item in the plan, and the other way round
+function link(itemId, on) {
+  for (const node of sel("item", "data-id", itemId)) node.classList.toggle("linked", on);
+  for (const node of document.querySelectorAll(`.facts li[data-item="${CSS.escape(str(itemId))}"]`)) node.classList.toggle("linked", on);
+}
+
+// ---------- runway: the next five weeks at a glance ----------
+
+function renderRunway() {
+  const box = $("runway");
+  box.replaceChildren();
+  const today = parseDate(DEMO_DATE);
+  const pos = (n) => `left:${((n / (RUNWAY_DAYS - 1)) * 100).toFixed(3)}%`;
+
+  box.append(el("span", { class: "track" }));
+  for (let n = 0; n < RUNWAY_DAYS; n++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + n);
+    const dow = d.getDay();
+    box.append(el("span", { class: `tick${dow === 1 ? " major" : ""}${dow === 0 || dow === 6 ? " weekend" : ""}`, style: pos(n) }));
+    if (dow === 1 && n > 0) {
+      box.append(el("span", { class: "tick-label", style: pos(n), text: d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }));
+    }
+  }
+  box.append(el("span", { class: "today", style: pos(0) }, el("span", { text: "Today" })));
+
+  const days = new Map();
+  let later = 0;
+  for (const it of state.items) {
+    const n = daysFromDemo(it.date);
+    if (n === null || n < 0) continue;
+    if (n >= RUNWAY_DAYS) { later++; continue; }
+    if (!days.has(n)) days.set(n, []);
+    days.get(n).push(it);
+  }
+  for (const [n, list] of days) {
+    list.sort(byDate);
+    const conflict = list.some((i) => i.status === "conflict");
+    const edge = n < 4 ? " edge-left" : n > RUNWAY_DAYS - 6 ? " edge-right" : "";
+    box.append(el("button", {
+      type: "button", class: `pin ${conflict ? "conflict" : urgency(n)}${edge}`, style: pos(n),
+      "aria-label": `${fmtDate(list[0].date)}: ${list.map((i) => i.title).join(", ")}`,
+      onclick: () => scrollToItem(list[0].id),
+    }, String(list.length),
+    el("span", { class: "tip", "aria-hidden": "true" },
+      el("b", { text: `${fmtDate(list[0].date)} · ${relLabel(n)}` }),
+      list.map((i) => el("span", { text: `${i.status === "conflict" ? "Not confirmed: " : ""}${i.title}` })))));
+  }
+  if (later) box.append(el("span", { class: "later", text: `+${later} later` }));
+  if (!state.items.some((i) => parseDate(i.date))) {
+    box.append(el("p", { class: "runway-empty", text: "Your deadlines will line up here." }));
+  }
+}
+
+function renderBriefing() {
+  const p = $("briefing");
+  p.replaceChildren();
+  if (!state.items.length) { p.textContent = "Nothing planned yet."; return; }
+  const week = state.items.filter((i) => { const n = daysFromDemo(i.date); return n !== null && n >= 0 && n <= 6; }).length;
+  const decide = state.items.filter((i) => i.status === "conflict").length;
+  p.append(week ? `${plural(week, "thing", "things")} due this week` : "Nothing due this week");
+  if (decide) {
+    p.append(" · ", el("button", {
+      type: "button", class: "brief-link", text: `${decide === 1 ? "1 date needs" : `${decide} dates need`} your decision`,
+      onclick: () => { setFilter("decide"); $("plan-title").scrollIntoView({ behavior: "smooth", block: "start" }); },
+    }));
+  }
+}
+
 // ---------- plan ----------
 
-const RESULT_TEXT = { new: "new", same: "merged", update: "updated", conflict: "conflict", related: "linked" };
+const FILTERS = [["all", "All"], ["task", "Tasks"], ["event", "Events"], ["decide", "To decide"]];
+
+function filterTest(key, it) {
+  if (key === "task") return it.type !== "event";
+  if (key === "event") return it.type === "event";
+  if (key === "decide") return it.status === "conflict";
+  return true;
+}
+
+function setFilter(f) {
+  state.filter = f;
+  renderFilters();
+  renderPlan();
+}
+
+function renderFilters() {
+  const box = $("filters");
+  box.replaceChildren();
+  if (!state.items.length) return;
+  for (const [key, label] of FILTERS) {
+    const n = state.items.filter((it) => filterTest(key, it)).length;
+    if (key === "decide" && !n && state.filter !== "decide") continue;
+    box.append(el("button", { type: "button", "aria-pressed": state.filter === key ? "true" : "false", onclick: () => setFilter(key) },
+      label, el("span", { class: "n", text: n })));
+  }
+}
 
 function historyLine(line) {
   // "Thu 15 Oct 23:59 -> Mon 19 Oct 23:59 (prof_notice.png)"
@@ -140,15 +265,16 @@ function historyLine(line) {
 
 function conflictEl(it) {
   const c = it.conflict;
-  const msg = el("p", { text: "Your files disagree on the date. Which one is right?" });
+  const msg = el("p", { text: "Your files disagree on this date. Which one is right?" });
   const choices = el("div", { class: "choices" });
   c.options.forEach((o, i) => {
     const suggested = i === c.suggested;
     choices.append(el("button", {
       type: "button", class: `choice${suggested ? " suggested" : ""}`,
       onclick: () => resolveConflict(it.id, i, choices, msg),
-    }, el("b", { text: when(o.date, o.time) }),
-    el("span", { text: `${str(o.source_type)} · ${str(o.file)}${suggested ? " · suggested" : ""}` })));
+    }, suggested ? el("span", { class: "sugg", text: "Suggested" }) : null,
+    el("b", { text: when(o.date, o.time) }),
+    el("span", { text: `${str(o.source_type)} · ${str(o.file)}` })));
   });
   return el("div", { class: "conflict-box" }, msg, choices);
 }
@@ -158,6 +284,7 @@ async function resolveConflict(id, choice, box, msg) {
   try {
     applyState(await postJSON("/api/resolve", { item_id: id, choice }));
     state.flash = new Set([id]);
+    if (state.filter === "decide" && !state.items.some((i) => i.status === "conflict")) state.filter = "all";
     render();
     const it = state.items.find((i) => i.id === id);
     if (it) announce(`Confirmed ${fmtDate(it.date)} for ${it.title}.`);
@@ -175,25 +302,29 @@ function itemEl(it, depth) {
   const tags = el("span", { class: "tags" });
   if (conflict) tags.append(el("span", { class: "tag conflict", text: "Conflict" }));
   if (it.updated) tags.append(el("span", { class: "tag updated", text: "Updated" }));
-  if (srcs.some((s) => !s.verified)) tags.append(el("span", { class: "tag unverified", text: "Check quote" }));
+  if (srcs.some((s) => !s.verified)) tags.append(el("span", { class: "tag check", text: "Check quote" }));
 
   const meta = conflict
-    ? [`${it.conflict.options.map((o) => fmtDate(o.date)).join(" or ")}, not confirmed`]
-    : [timeRange(it.time, it.end_time), it.location, it.type === "event" ? "Event" : "Task"];
+    ? [`${it.conflict.options.map((o) => fmtDate(o.date)).join(" or ")}: not confirmed`]
+    : [timeRange(it.time, it.end_time), it.location, plural(srcs.length, "file", "files")];
 
   const summary = el("summary", {},
-    el("span", { class: "item-title", text: it.title }), tags,
-    parent ? el("span", { class: "item-for", text: `For: ${parent.title}` }) : null,
-    el("span", { class: "item-meta", text: meta.filter(Boolean).join(" · ") }));
+    el("span", { class: `kind ${it.type === "event" ? "event" : "task"}`, title: it.type === "event" ? "Event" : "Task" }),
+    el("span", { class: "item-main" },
+      el("span", { class: "item-title", text: it.title }),
+      parent ? el("span", { class: "item-for", text: `For: ${parent.title}` }) : null,
+      el("span", { class: "item-meta", text: meta.filter(Boolean).join(" · ") })),
+    tags,
+    el("span", { class: "chev" }, icon("chevron")));
 
   const href = safeHref(it.link);
   const body = el("div", { class: "item-body" },
     href ? el("p", {}, "Link: ", el("a", { href, target: "_blank", rel: "noopener", text: it.link })) : null,
-    el("h4", { text: "Found in" }),
+    el("h4", { text: "Where it says so" }),
     el("ul", {}, srcs.map((s) => el("li", {},
       el("button", { type: "button", class: "cite", text: str(s.file), onclick: () => scrollToFile(s.file_id) }), " ",
       str(s.source_type), s.quote ? ": " : "", s.quote ? el("q", { text: str(s.quote).replace(/\s+/g, " ") }) : null,
-      s.verified ? "" : " (this quote was not found word for word in the file; please check it)"))),
+      s.verified ? "" : " (not found word for word in the file, please check it)"))),
     el("h4", { text: "History" }),
     el("ol", {}, (Array.isArray(it.history) ? it.history : []).map(historyLine)));
 
@@ -204,16 +335,23 @@ function itemEl(it, depth) {
     if (d.open) { state.open.add(it.id); state.closed.delete(it.id); }
     else { state.open.delete(it.id); if (conflict) state.closed.add(it.id); }
   });
+  summary.addEventListener("mouseenter", () => link(it.id, true));
+  summary.addEventListener("mouseleave", () => link(it.id, false));
   return d;
 }
 
 function renderPlan() {
   const box = $("plan");
   box.replaceChildren();
-  const items = state.items;
-  $("plan-count").textContent = items.length ? String(items.length) : "";
+  $("plan-count").textContent = state.items.length ? String(state.items.length) : "";
+  if (!state.items.length) {
+    box.append(el("div", { class: "empty-note" }, el("strong", { text: "Nothing planned yet" }),
+      "Add a notice, poster or chat above. Every task and event lands here in date order."));
+    return;
+  }
+  const items = state.items.filter((it) => filterTest(state.filter, it));
   if (!items.length) {
-    box.append(el("p", { class: "empty-note", text: "Tasks and events from your files will show up here, in date order." }));
+    box.append(el("div", { class: "empty-note" }, el("strong", { text: "Nothing here" }), "No items match this filter."));
     return;
   }
   const ids = new Set(items.map((i) => i.id));
@@ -225,21 +363,29 @@ function renderPlan() {
     groups.get(key).push(it);
   }
   const keys = [...groups.keys()].sort((a, b) => (a === "none") - (b === "none") || a.localeCompare(b));
-  for (const key of keys) {
-    const n = key === "none" ? null : daysFromDemo(key);
-    const day = el("div", { class: "day" }, el("div", { class: "day-head" },
-      el("span", { class: "day-date", text: key === "none" ? "No date yet" : fmtDate(key) }),
-      el("span", { class: `day-rel${n !== null && n >= 0 && n <= 3 ? " soon" : ""}`, text: relLabel(n) })));
+  keys.forEach((key, index) => {
+    let badge;
+    if (key === "none") {
+      badge = el("div", { class: "day-badge" }, el("span", { class: "day-num", text: "No date" }));
+    } else {
+      const d = parseDate(key);
+      const n = daysFromDemo(key);
+      badge = el("div", { class: "day-badge" },
+        el("span", { class: "day-num", text: d.getDate() }),
+        el("span", { class: "day-wk", text: `${d.toLocaleDateString("en-GB", { weekday: "short" })} · ${d.toLocaleDateString("en-GB", { month: "short" })}` }),
+        el("span", { class: `due ${urgency(n)}`, text: relLabel(n) }));
+    }
+    const list = el("div", { class: "day-items" });
     const seen = new Set();
     const addTree = (it, depth) => { // an item, then its helper tasks right below it
       if (seen.has(it.id) || depth > 3) return;
       seen.add(it.id);
-      day.append(itemEl(it, depth));
+      list.append(itemEl(it, depth));
       items.filter((c) => c.parent_id === it.id).sort(byDate).forEach((c) => addTree(c, depth + 1));
     };
     groups.get(key).forEach((it) => addTree(it, 0));
-    box.append(day);
-  }
+    box.append(el("section", { class: `day${key === "none" ? " nodate" : ""}`, style: `animation-delay:${Math.min(index, 8) * 40}ms` }, badge, list));
+  });
 }
 
 // ---------- files ----------
@@ -248,11 +394,11 @@ function resultText(fact) {
   const it = state.items.find((i) => i.id === fact.item_id);
   const title = it ? `“${it.title}”` : "your plan";
   switch (fact.result) {
-    case "same": return { text: `Matches ${title} in your plan`, cls: "" };
-    case "update": return { text: `Changed the date of ${title}`, cls: "res-update" };
+    case "same": return { text: `Matches ${title}`, cls: "" };
+    case "update": return { text: `Changed the date of ${title}`, cls: "update" };
     case "conflict":
       return it && it.status === "conflict"
-        ? { text: `Disagrees with ${title}: choose a date in your plan`, cls: "res-conflict" }
+        ? { text: `Disagrees with ${title}: choose a date`, cls: "conflict" }
         : { text: `Disagreed with ${title} (settled)`, cls: "" };
     case "related": {
       const parent = it && it.parent_id ? state.items.find((p) => p.id === it.parent_id) : null;
@@ -278,7 +424,7 @@ function highlightedText(text, spans) {
   return pre;
 }
 
-function fileEl(f) {
+function fileEl(f, index) {
   const kind = str(f.kind);
   const url = str(f.url).startsWith("/") ? f.url : null; // only links to our own server
   const thumb = el("a", { class: "thumb", href: url, target: "_blank", rel: "noopener", "aria-label": `Open ${str(f.name)}` },
@@ -286,7 +432,9 @@ function fileEl(f) {
   const kindText = kind === "pdf" ? (f.pages > 1 ? `PDF, ${f.pages} pages` : "PDF") : kind === "image" ? "Image" : "Text";
   const head = el("div", { class: "file-head" }, thumb, el("div", {},
     el("p", { class: "file-name" }, url ? el("a", { href: url, target: "_blank", rel: "noopener", text: f.name }) : str(f.name)),
-    el("p", { class: "file-meta", text: [str(f.source_label), kindText, f.seconds ? `read in ${f.seconds}s` : ""].filter(Boolean).join(" · ") })));
+    el("p", { class: "file-meta" },
+      el("span", { class: `src src-${str(f.source) || "other"}`, text: str(f.source_label) || "Other" }),
+      [kindText, f.seconds ? `read in ${f.seconds}s` : ""].filter(Boolean).join(" · "))));
 
   const facts = Array.isArray(f.facts) ? f.facts : [];
   const factList = facts.length
@@ -296,24 +444,27 @@ function fileEl(f) {
       const more = el("p", { class: "fact-more" });
       const parts = [x.location ? str(x.location) : null,
         href ? el("a", { href, target: "_blank", rel: "noopener", text: x.link }) : null,
-        el("button", { type: "button", class: `link ${res.cls}`, text: res.text, onclick: () => scrollToItem(x.item_id) }),
+        el("button", { type: "button", class: `res ${res.cls}`, text: res.text, onclick: () => scrollToItem(x.item_id) }),
         x.verified ? null : "quote not found word for word, please check"].filter(Boolean);
       parts.forEach((p, k) => { if (k) more.append(" · "); more.append(p); });
-      return el("li", {},
+      return el("li", { "data-item": x.item_id, onmouseenter: () => link(x.item_id, true), onmouseleave: () => link(x.item_id, false) },
         el("div", { class: "fact-main" }, el("mark", { class: "fact-when", text: when(x.date, x.time, x.end_time) }),
           el("span", { class: "fact-title", text: x.title })),
         more);
     }))
-    : el("p", { class: "no-facts", text: "No dates or tasks were found in this file." });
+    : el("p", { class: "no-facts", text: "No dates or tasks in this file. Its text is still searchable." });
 
   const text = str(f.text);
-  const full = el("details", { class: "fulltext" }, el("summary", { text: "Show the text we read" }));
+  const full = el("details", { class: "fulltext" }, el("summary", {}, "Show the text we read", icon("chevron")));
   full.addEventListener("toggle", () => { // build the (possibly long) text only when opened
     if (full.open && full.children.length === 1) full.append(highlightedText(text, facts.map((x) => x.quote_span)));
-  }, { passive: true });
+  });
 
-  return el("article", { class: `file${state.flashFile === f.id ? " flash" : ""}`, "data-id": f.id },
-    head, factList, f.summary ? el("p", { class: "summary", text: f.summary }) : null, text ? full : null);
+  return el("article", { class: `file${state.flashFile === f.id ? " flash" : ""}`, "data-id": f.id, style: `animation-delay:${Math.min(index, 8) * 50}ms` },
+    head, factList,
+    f.summary ? el("p", { class: "summary-label", text: "Summary" }) : null,
+    f.summary ? el("p", { class: "summary", text: f.summary }) : null,
+    text ? full : null);
 }
 
 function renderFiles() {
@@ -321,10 +472,16 @@ function renderFiles() {
   box.replaceChildren();
   $("files-count").textContent = state.files.length ? String(state.files.length) : "";
   if (!state.files.length) {
-    box.append(el("p", { class: "empty-note", text: "Nothing here yet. Add a file above: the key dates and a short summary of each file show up here." }));
+    box.append(el("div", { class: "empty-note" }, el("strong", { text: "No files yet" }),
+      "Each file you add shows its key dates highlighted here, with a short summary and the text we read."));
     return;
   }
-  [...state.files].sort((a, b) => (b.order || 0) - (a.order || 0)).forEach((f) => box.append(fileEl(f)));
+  [...state.files].sort((a, b) => (b.order || 0) - (a.order || 0)).forEach((f, i) => box.append(fileEl(f, i)));
+}
+
+function renderSamples() {
+  const used = new Set(state.files.map((f) => f.name));
+  for (const b of $("sample-list").querySelectorAll(".sample")) b.classList.toggle("done", used.has(b.dataset.name));
 }
 
 function applyState(s) {
@@ -334,8 +491,12 @@ function applyState(s) {
 }
 
 function render() {
+  renderBriefing();
+  renderRunway();
+  renderFilters();
   renderPlan();
   renderFiles();
+  renderSamples();
   // flashes play once
   state.flash = new Set();
   state.flashFile = null;
@@ -357,14 +518,28 @@ const addFiles = (list) => enqueue([...list].map((file) => ({ name: file.name ||
 
 function statusText(job) {
   if (job.status === "waiting") return "Waiting";
-  if (job.status === "busy") return `Reading… ${((performance.now() - job.started) / 1000).toFixed(0)}s`;
+  if (job.status === "busy") return `Reading ${((performance.now() - job.started) / 1000).toFixed(0)}s`;
   return job.message || "";
 }
 
 function renderQueue() {
-  $("queue").replaceChildren(...state.queue.map((job) => el("li", { class: job.status },
-    el("span", { class: "q-name", text: job.name }), el("span", { class: "q-status", text: statusText(job) }))));
+  const icons = { waiting: "clock", busy: "file", done: "check", error: "alert" };
+  $("queue").replaceChildren(...state.queue.map((job) => el("li", { class: `q ${job.status}` },
+    el("span", { class: "q-icon" }, icon(icons[job.status] || "file")),
+    el("span", { class: "q-name", text: job.name }),
+    el("span", { class: "q-status", text: statusText(job) }),
+    el("span", { class: "q-bar" }))));
 }
+
+function tickQueue() { // update the timers without rebuilding the list (keeps the bar animation smooth)
+  const rows = $("queue").children;
+  state.queue.forEach((job, i) => {
+    const status = rows[i] && rows[i].querySelector(".q-status");
+    if (job.status === "busy" && status) status.textContent = statusText(job);
+  });
+}
+
+const RESULT_TEXT = { new: "new", same: "merged", update: "updated", conflict: "conflict", related: "linked" };
 
 function describe(out) {
   const counts = {};
@@ -377,7 +552,7 @@ function describe(out) {
 async function runQueue() {
   if (state.running) return;
   state.running = true;
-  timer = setInterval(renderQueue, 500);
+  timer = setInterval(tickQueue, 500);
   try {
     let job;
     while ((job = state.queue.find((j) => j.status === "waiting"))) {
@@ -395,11 +570,10 @@ async function runQueue() {
           out = await api("/api/process", { method: "POST", body: form });
         }
         applyState(out.state);
+        job.status = "done";
         if (out.duplicate) {
-          job.status = "done";
           job.message = "Already added";
         } else {
-          job.status = "done";
           job.message = describe(out);
           state.flash = new Set((out.changes || []).map((c) => c.item_id));
           state.flashFile = out.file ? out.file.id : null;
@@ -420,23 +594,41 @@ async function runQueue() {
   }
 }
 
-// ---------- adding files: button, drag and drop anywhere, Ctrl+V ----------
+// ---------- adding files: buttons, drag and drop anywhere, Ctrl+V ----------
 
 $("browse").addEventListener("click", () => $("file-input").click());
-$("drop").addEventListener("click", (e) => { if (e.target === $("drop") || e.target.classList.contains("drop-title")) $("file-input").click(); });
+$("drop").addEventListener("click", (e) => {
+  if (e.target.closest("button") || e.target === $("file-input")) return;
+  $("file-input").click();
+});
 $("file-input").addEventListener("change", (e) => {
   if (e.target.files && e.target.files.length) addFiles(e.target.files);
   e.target.value = "";
 });
 
 let dragDepth = 0;
-window.addEventListener("dragenter", (e) => { e.preventDefault(); dragDepth++; $("drop").classList.add("over"); });
-window.addEventListener("dragover", (e) => e.preventDefault());
-window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("drop").classList.remove("over"); });
+const hasFiles = (e) => !!(e.dataTransfer && [...(e.dataTransfer.types || [])].includes("Files"));
+function showMask(on, count) {
+  $("dropmask").classList.toggle("on", on);
+  $("drop").classList.toggle("over", on);
+  if (on) $("dropmask-text").textContent = count > 1 ? `Drop to add ${count} files` : "Drop to add the file";
+}
+window.addEventListener("dragenter", (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth++;
+  showMask(true, e.dataTransfer.items ? e.dataTransfer.items.length : 1);
+});
+window.addEventListener("dragover", (e) => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener("dragleave", (e) => {
+  if (!hasFiles(e)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) showMask(false);
+});
 window.addEventListener("drop", (e) => {
   e.preventDefault();
   dragDepth = 0;
-  $("drop").classList.remove("over");
+  showMask(false);
   const files = e.dataTransfer && e.dataTransfer.files;
   if (files && files.length) addFiles(files);
 });
@@ -449,23 +641,24 @@ document.addEventListener("paste", (e) => {
   addFiles(files.map((f, i) => new File([f], `pasted_screenshot${i ? "_" + (i + 1) : ""}.${f.type === "image/jpeg" ? "jpg" : "png"}`, { type: f.type })));
 });
 
+function closePaste() {
+  $("paste").hidden = true;
+  $("paste-toggle").setAttribute("aria-expanded", "false");
+}
 $("paste-toggle").addEventListener("click", () => {
+  if (!$("paste").hidden) { closePaste(); return; }
   $("paste").hidden = false;
   $("paste-toggle").setAttribute("aria-expanded", "true");
   $("paste-text").focus();
 });
-$("paste-cancel").addEventListener("click", () => {
-  $("paste").hidden = true;
-  $("paste-toggle").setAttribute("aria-expanded", "false");
-});
+$("paste-cancel").addEventListener("click", closePaste);
 $("paste").addEventListener("submit", (e) => {
   e.preventDefault();
   const text = $("paste-text").value.trim();
   if (!text) { $("paste-text").focus(); return; }
   enqueue([{ name: "Pasted text", text }]);
   $("paste-text").value = "";
-  $("paste").hidden = true;
-  $("paste-toggle").setAttribute("aria-expanded", "false");
+  closePaste();
 });
 
 // ---------- ask / search ----------
@@ -553,6 +746,16 @@ $("ask-form").addEventListener("submit", (e) => { e.preventDefault(); ask($("que
 for (const b of $("suggest").querySelectorAll("button")) {
   b.addEventListener("click", () => { $("question").value = b.textContent; ask(b.textContent); });
 }
+$("answer-close").addEventListener("click", () => { $("answer").hidden = true; });
+
+// "/" jumps to the search box
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  e.preventDefault();
+  $("question").focus();
+});
 
 // ---------- header actions ----------
 
@@ -574,6 +777,7 @@ $("reset").addEventListener("click", async () => {
     return;
   }
   state.queue = [];
+  state.filter = "all";
   state.open.clear();
   state.closed.clear();
   $("answer").hidden = true;
@@ -585,27 +789,28 @@ $("reset").addEventListener("click", async () => {
 
 // ---------- start ----------
 
+for (const holder of document.querySelectorAll("[data-icon]")) holder.prepend(icon(holder.dataset.icon));
+
 (async function start() {
   try {
     const info = await api("/api/info");
     if (info && parseDate(info.demo_date)) DEMO_DATE = info.demo_date;
     if (info && info.model) $("model-name").textContent = `Gemma 4 (${info.model})`;
   } catch (err) { /* keep defaults */ }
-  const demo = parseDate(DEMO_DATE);
-  $("demo-date").textContent = demo.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  $("demo-date").textContent = parseDate(DEMO_DATE).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  try {
+    const names = await api("/api/samples");
+    if (Array.isArray(names) && names.length) {
+      $("sample-list").replaceChildren(...names.map((name, i) => el("button", {
+        type: "button", class: "sample", "data-name": name, title: `Add ${name}`, onclick: () => enqueue([{ name, sample: name }]),
+      }, el("b", { text: i + 1 }), name)));
+      $("samples").hidden = false;
+    }
+  } catch (err) { /* samples are optional */ }
   try {
     applyState(await api("/api/state"));
   } catch (err) {
     $("files").replaceChildren(el("p", { class: "empty-note", text: err.message }));
   }
   render();
-  try {
-    const names = await api("/api/samples");
-    if (Array.isArray(names) && names.length) {
-      $("sample-list").replaceChildren(...names.map((name, i) => el("button", {
-        type: "button", class: "link", text: `${i + 1}. ${name}`, onclick: () => enqueue([{ name, sample: name }]),
-      })));
-      $("samples").hidden = false;
-    }
-  } catch (err) { /* samples are optional */ }
 })();
