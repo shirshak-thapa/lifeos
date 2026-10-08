@@ -107,9 +107,45 @@ def brief():
     c.save()
 
 
+def schedule():
+    """A 3-page PDF, to test multi-page reading."""
+    pages = [
+        ("PHYS 101 - Mechanics: Semester Schedule", [
+            "Department of Physics - Autumn 2026",
+            "This schedule lists the key dates for the course. Please read all three pages.",
+            "",
+            "Lab Report 2 (Projectile Motion) is due on Wednesday, 21 October 2026 at 5:00 PM.",
+            "Hand it in at the Physics Lab Office, Room 112.",
+        ]),
+        ("Mid-semester exam", [
+            "The PHYS 101 mid-semester exam takes place on Wednesday, 28 October 2026,",
+            "from 9:00 AM to 11:00 AM in Exam Hall B.",
+            "Bring your student ID card and a calculator. Phones are not allowed.",
+        ]),
+        ("Reading week and office hours", [
+            "Reading week: there are no lectures from Monday, 2 November to Friday, 6 November 2026.",
+            "",
+            "Prof. Sharma holds office hours on Thursdays from 2:00 PM to 4:00 PM in Room 305.",
+            "Questions about the course: physics.office@example.edu",
+        ]),
+    ]
+    c = canvas.Canvas(f"{OUT}/course_schedule.pdf", pagesize=A4)
+    for n, (title, lines) in enumerate(pages, 1):
+        c.setFont("Helvetica-Bold", 18)
+        c.drawString(72, 760, title)
+        c.setFont("Helvetica", 12)
+        for i, line in enumerate(lines):
+            c.drawString(72, 724 - 20 * i, line)
+        c.setFont("Helvetica", 9)
+        c.drawString(72, 40, f"PHYS 101 schedule - page {n} of {len(pages)}")
+        c.showPage()
+    c.save()
+
+
 if __name__ == "__main__":
     chat()
     brief()
+    schedule()
     poster()
     paper("note.png", "Ask Ram for the presentation slides")
     notice()

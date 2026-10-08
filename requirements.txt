@@ -4,5 +4,5 @@ python-multipart
 google-genai
 python-dotenv
 pypdf
-pillow
+pillow>=11.3
 reportlab

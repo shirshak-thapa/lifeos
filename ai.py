@@ -46,6 +46,19 @@ def _cache_put(key, value):
         logic.atomic_write(settings.CACHE_FILE, _cache)
 
 
+used_keys = set()
+
+
+def prune_cache(keep):
+    """Drop cache entries that were not used (old prompts). Used by demo_test.py --prune."""
+    global _cache
+    _cache_get("")
+    with _cache_lock:
+        _cache = {k: v for k, v in _cache.items() if k in keep}
+        logic.atomic_write(settings.CACHE_FILE, _cache)
+    return len(_cache)
+
+
 def _cache_key(step, *parts):
     h = hashlib.sha256(step.encode())
     for p in parts:
@@ -71,6 +84,8 @@ def _friendly(e):
         return "The free AI quota is busy (rate limit). Please wait a minute and try again."
     if "API key" in msg or "API_KEY" in msg or "403" in msg:
         return "The API key was rejected. Check GEMINI_API_KEY in your .env file."
+    if "503" in msg or "UNAVAILABLE" in msg or "500" in msg or "INTERNAL" in msg:
+        return "The AI service is overloaded right now. Please try again in a minute (nothing was saved)."
     return "Could not reach the AI model (network problem?). Please try again."
 
 
@@ -104,7 +119,7 @@ def _generate(contents, want_json):
                 if "400" in msg or "403" in msg or "404" in msg:
                     break  # a bad request won't fix itself -> go straight to the backup model
                 if attempt == 0:
-                    time.sleep(6 if "429" in msg else 2)
+                    time.sleep(6 if "429" in msg else 4 if "50" in msg[:5] or "ServerError" in type(e).__name__ else 2)
         print(f"[ai] {model} failed, trying backup model")
     raise AIError(_friendly(last_error))
 
@@ -119,6 +134,7 @@ def _parse_json(text):
 def ask_model(step, prompt, image=None, mime=None, want_json=True):
     """One AI step with caching. JSON answers are parsed; bad JSON gets one retry."""
     key = _cache_key(step, prompt, image or b"")
+    used_keys.add(key)
     if settings.CACHE_ENABLED:
         cached = _cache_get(key)
         if cached is not None:
@@ -145,6 +161,11 @@ def ask_model(step, prompt, image=None, mime=None, want_json=True):
 
 # ---------- the four AI steps ----------
 
+def _today():
+    from datetime import date
+    return f"{settings.DEMO_DATE} ({date.fromisoformat(settings.DEMO_DATE).strftime('%A')})"
+
+
 def read_image(image_bytes, mime):
     prompt = ("Copy out ALL the text in this image exactly as written, keeping the original "
               "spelling, capitalisation and punctuation. Output only the text, nothing else.")
@@ -152,24 +173,40 @@ def read_image(image_bytes, mime):
 
 
 def extract(source_text):
-    prompt = f"""You turn messy student information into a to-do list.
-Today is {settings.DEMO_DATE} (Monday). Resolve relative dates ("this friday", "tuesday 20th") against today.
+    """Returns the raw model answer: {"source", "summary", "items"} (validated later in logic.py)."""
+    prompt = f"""You read ONE document that a university student received: a chat screenshot, notice, poster, PDF or note.
+Today is {_today()}. Resolve relative dates ("this friday", "tuesday 20th") against today.
+If a date has no year, use the next time that date happens on or after today.
+If something happens every week, use its next date on or after today.
 
-List EVERY task (something the student must do or submit) and event (something happening at a time/place) in the text below.
-Do not invent anything. Only include things that are actually in the text.
-Return JSON: {{"items": [{{"title": short clear title (e.g. "Physics Assignment 3", "Physics presentation"),
-  "type": "task" or "event",
-  "date": "YYYY-MM-DD" or null,
-  "time": "HH:MM" (24h) or null,
-  "location": string or null,
-  "quote": the exact sentence or phrase from the text this item comes from, copied character for character}}]}}
-If there is nothing, return {{"items": []}}.
+Return ONE JSON object with exactly three keys: "source", "summary" and "items".
+"source" is one word saying who wrote the document:
+  "official" = a university, department, school or organisation (notices, briefs, posters)
+  "teacher" = a teacher or professor writing to students
+  "classmate" = another student, for example in a group chat
+  "personal" = the student's own note
+  "other" = anything else
+"summary" is one or two plain sentences: what this document is and what the student needs to know.
+"items" is a list with EVERY task and event in the text. Each item is an object with:
+  "title": short and specific, with the course or organisation if the text gives it. A task starts with what to do
+           (e.g. "Submit Physics Assignment 3", "Ask Ram for the presentation slides"); an event is named (e.g. "Kalg School open day")
+  "type": "task" (something the student must do, submit or register for) or "event" (something that happens at a time or place)
+  "date": "YYYY-MM-DD" or null
+  "time": start time "HH:MM" (24h) or null
+  "end_time": end time "HH:MM" (24h) or null
+  "location": a physical place or null (never a website)
+  "link": a website, URL or email given for this item, or null
+  "quote": the exact sentence or phrase from the text this item comes from, copied character for character
+Do not invent anything. Ignore placeholder text such as "lorem ipsum". If there are no tasks or events, "items" is [].
 
 TEXT:
 \"\"\"{source_text}\"\"\""""
     data = ask_model("extract", prompt)
-    items = data.get("items", []) if isinstance(data, dict) else data
-    return items if isinstance(items, list) else []
+    if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict) and "items" in data[0]:
+        data = data[0]  # the model sometimes wraps the object in a list
+    elif isinstance(data, list):
+        data = {"items": data}  # ...or returns only the list of items
+    return data if isinstance(data, dict) else {}
 
 
 def match(new_item, existing_items):
@@ -194,16 +231,23 @@ Return ONE JSON object: {{"match_id": id of the existing item or null, "verdict"
     return logic.clean_verdict(ask_model("match", prompt))
 
 
-def answer(question, items):
-    prompt = f"""Today is {settings.DEMO_DATE} (Monday). Answer the student's question using ONLY these stored items:
+def answer(question, items, documents):
+    prompt = f"""Today is {_today()}. A student asks a question about the files they uploaded.
+Answer using ONLY the plan and the documents below. Never use outside knowledge.
+
+PLAN (tasks and events already extracted from the files):
 {json.dumps(items, indent=1)}
 
+DOCUMENTS (full text of each uploaded file):
+{json.dumps(documents, indent=1, ensure_ascii=False)}
+
 Rules:
-- List what to do in date order. For each item give its date and its source file(s).
-- If an item's status is "conflict", say its date is "not confirmed" and show the possible dates.
-- Tasks with no date that belong to ("for") an item you list: mention them too, marked "no date".
-- Do not invent anything that is not in the items. If nothing matches, say so.
-- Keep it under 8 lines. Plain text, one item per line starting with "- ".
+- Answer the question directly in 1 to 6 short lines of plain text (no markdown, no bold).
+- After each fact, name the file it comes from in brackets, e.g. [assignment_brief.pdf].
+- When listing things to do, put them in date order and give each one its date.
+- Write dates like "Thu 15 Oct" and times like "10:00".
+- If an item's status is "conflict", say its date is "not confirmed" and give the possible dates.
+- If the answer is not in the documents, say: I couldn't find that in your files.
 
 QUESTION: {question}"""
     return ask_model("answer", prompt, want_json=False)

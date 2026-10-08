@@ -1,139 +1,196 @@
 {
- "answer:7ee646bcfcedb691ffcd59a9": "- 2026-10-15: Physics assignment (assignment_brief.pdf, classmate_chat.png)\n- no date: Ask Ram for the presentation slides (note.png)",
- "extract:063e12ddd89b9ba742d7dbfd": {
-  "items": [
-   {
-    "date": "2026-10-19",
-    "location": null,
-    "quote": "the Physics Assignment 3 deadline has been extended to Monday, 19 October.",
-    "time": null,
-    "title": "Physics Assignment 3 deadline",
-    "type": "task"
-   }
-  ]
- },
- "extract:08470d85a8271660fc547b10": {
-  "items": [
-   {
-    "date": "2026-10-16",
-    "location": null,
-    "quote": "guys physics assignment due this friday!!",
-    "time": null,
-    "title": "Physics assignment",
-    "type": "task"
-   },
-   {
-    "date": "2026-10-20",
-    "location": null,
-    "quote": "our presentation is on tuesday 20th",
-    "time": null,
-    "title": "Physics presentation",
-    "type": "event"
-   }
-  ]
- },
- "extract:608d7074a0291be9649d2fb3": {
+ "answer:879d742a685a597823a9b49f": "You need to submit your Physics 101 assignment, but the date is not confirmed: Thu 15 Oct [assignment_brief.pdf] or Fri 16 Oct [classmate_chat.png].",
+ "answer:b3803846c38a0dcf64edd6fd": "You should bring your student ID card and a calculator [course_schedule.pdf].",
+ "answer:f6912854161308789812ec39": "You need to submit your Physics 101 assignment by Thu 15 Oct at 23:59 [assignment_brief.pdf].\nYou also need to ask Ram for the presentation slides [note.png].",
+ "extract:1a42fc0beeb562632b817ae0": {
   "items": [
    {
     "date": null,
+    "end_time": null,
+    "link": null,
     "location": null,
     "quote": "Ask Ram for the presentation slides",
     "time": null,
     "title": "Ask Ram for the presentation slides",
     "type": "task"
    }
-  ]
+  ],
+  "source": "classmate",
+  "summary": "A request to obtain presentation slides from Ram."
  },
- "extract:ec80cfc5a7c739ecec5d0b4e": {
+ "extract:2f16b0f523622b8365c464e8": {
   "items": [
    {
     "date": "2026-10-20",
+    "end_time": null,
+    "link": null,
     "location": "Room 204",
-    "quote": "Physics\nPresentation Day\n\nTuesday 20 October 2026\n10:00 AM\nRoom 204",
+    "quote": "Tuesday 20 October 2026\n10:00 AM\nRoom 204\n\nAll PHYS 101 groups present",
     "time": "10:00",
-    "title": "Physics Presentation Day",
+    "title": "PHYS 101 Presentation Day",
     "type": "event"
    }
-  ]
+  ],
+  "source": "official",
+  "summary": "A notice regarding the Physics presentation day for all PHYS 101 groups. Students need to be prepared to present on Tuesday, 20 October."
  },
- "extract:fe8dca6e716767ab6acaf1b5": {
+ "extract:50f10008c5371cae2d9c66c3": [
+  {
+   "items": [
+    {
+     "date": "2026-10-21",
+     "end_time": null,
+     "link": null,
+     "location": "Physics Lab Office, Room 112",
+     "quote": "Lab Report 2 (Projectile Motion) is due on Wednesday, 21 October 2026 at 5:00 PM.",
+     "time": "17:00",
+     "title": "Submit Lab Report 2 (Projectile Motion) for PHYS 101",
+     "type": "task"
+    },
+    {
+     "date": "2026-10-28",
+     "end_time": "11:00",
+     "link": null,
+     "location": "Exam Hall B",
+     "quote": "The PHYS 101 mid-semester exam takes place on Wednesday, 28 October 2026, from 9:00 AM to 11:00 AM in Exam Hall B.",
+     "time": "09:00",
+     "title": "PHYS 101 mid-semester exam",
+     "type": "event"
+    },
+    {
+     "date": "2026-11-02",
+     "end_time": null,
+     "link": null,
+     "location": null,
+     "quote": "Reading week: there are no lectures from Monday, 2 November to Friday, 6 November 2026.",
+     "time": null,
+     "title": "Reading week",
+     "type": "event"
+    },
+    {
+     "date": "2026-11-05",
+     "end_time": "16:00",
+     "link": null,
+     "location": "Room 305",
+     "quote": "Prof. Sharma holds office hours on Thursdays from 2:00 PM to 4:00 PM in Room 305.",
+     "time": "14:00",
+     "title": "Prof. Sharma office hours",
+     "type": "event"
+    }
+   ],
+   "source": "official",
+   "summary": "This is the semester schedule for the PHYS 101 Mechanics course. It outlines important deadlines, exam details, reading week, and office hours."
+  }
+ ],
+ "extract:78d0b14c40f628b79ffda2dc": {
+  "items": [
+   {
+    "date": "2026-10-19",
+    "end_time": null,
+    "link": null,
+    "location": null,
+    "quote": "the Physics Assignment 3 deadline has been extended to Monday, 19 October.",
+    "time": null,
+    "title": "Submit Physics Assignment 3",
+    "type": "task"
+   }
+  ],
+  "source": "official",
+  "summary": "The Department of Physics has extended the deadline for Physics Assignment 3. Students must submit the assignment by Monday, 19 October."
+ },
+ "extract:cfce0b11098bdc08751ad0d3": {
   "items": [
    {
     "date": "2026-10-15",
-    "location": "student portal",
+    "end_time": null,
+    "link": null,
+    "location": null,
     "quote": "Submission deadline: Thursday, 15 October 2026, 11:59 PM",
     "time": "23:59",
-    "title": "Physics Assignment 3 Submission",
+    "title": "Submit Physics Assignment 3 (PHYS 101 - Mechanics)",
     "type": "task"
    }
-  ]
+  ],
+  "source": "official",
+  "summary": "This is an assignment notice for PHYS 101 - Mechanics regarding Newton's laws of motion. Students must submit their answers as a single PDF via the student portal by the deadline."
  },
- "match:1574d8bf722aceaf11b46582": [
-  {
-   "match_id": "item1",
-   "reason": "The new item is a physics assignment but specifies a different date (2026-10-15) than the existing one (2026-10-16) without indicating a change.",
-   "verdict": "conflict"
-  }
- ],
- "match:3b73926f64bfae77774d19ae": {
-  "match_id": "item1",
-  "reason": "The new item refers to the same physics assignment but provides a different deadline date than the existing entry.",
-  "verdict": "conflict"
+ "extract:f730c901ed9e46079a0394dc": {
+  "items": [
+   {
+    "date": "2026-10-16",
+    "end_time": null,
+    "link": null,
+    "location": null,
+    "quote": "guys physics assignment due this friday!!",
+    "time": null,
+    "title": "Submit Physics 101 assignment",
+    "type": "task"
+   },
+   {
+    "date": "2026-10-20",
+    "end_time": null,
+    "link": null,
+    "location": null,
+    "quote": "our presentation is on tuesday 20th",
+    "time": null,
+    "title": "Physics 101 presentation",
+    "type": "event"
+   }
+  ],
+  "source": "classmate",
+  "summary": "A message from Aarav regarding upcoming deadlines for Physics 101. The student needs to submit an assignment by this Friday and prepare for a presentation on Tuesday the 20th."
  },
- "match:463f5abcd4f7740a4ed6617d": [
-  {
-   "match_id": "item1",
-   "reason": "The task is the same subject but provides a different due date without indicating a change.",
-   "verdict": "conflict"
-  }
- ],
- "match:53933fb4dab448b3f4013ead": {
+ "match:0f9517898f329089c9215331": {
+  "match_id": null,
+  "reason": "The new item is a lab report submission, which is a distinct task from the physics assignment and the presentation.",
+  "verdict": "new"
+ },
+ "match:1841df194de4090de2967c6c": {
   "match_id": "item2",
-  "reason": "The new item is the same event as item2 but adds specific time and location details.",
+  "reason": "The new item is the same event as item2, providing additional details like time and location.",
   "verdict": "same"
  },
- "match:53c2217fe287f0613d4aaf26": [
-  {
-   "match_id": "item1",
-   "reason": "The new item is a deadline for the physics assignment and the quote explicitly states the date has been extended.",
-   "verdict": "update"
-  }
- ],
- "match:6790c965d83764126263fe63": [
+ "match:39222ce4ddce8951b0f38ef6": {
+  "match_id": "item1",
+  "reason": "The new item is the same physics assignment but the quote explicitly states the deadline has been extended to a new date.",
+  "verdict": "update"
+ },
+ "match:50ed2e78dbc885349ef6cb8b": {
+  "match_id": "item2",
+  "reason": "Asking for slides is a preparatory task for the upcoming PHYS 101 Presentation Day.",
+  "verdict": "related"
+ },
+ "match:6323da57e7fbf00c56ec965d": [
   {
    "match_id": "item2",
-   "reason": "The task is a preparatory step for the existing Physics presentation.",
+   "reason": "Asking for slides is a preparatory task for the upcoming PHYS 101 Presentation Day.",
    "verdict": "related"
   }
  ],
- "match:73fcbafbe622e8d56a96e375": {
-  "match_id": "item1",
-  "reason": "The new item refers to the physics assignment and the quote explicitly states the deadline has been extended.",
-  "verdict": "update"
+ "match:978cb4ed7f82a7480567a6f2": {
+  "match_id": null,
+  "reason": "Reading week is a separate academic period and does not refer to any existing tasks or events.",
+  "verdict": "new"
  },
- "match:78e5899d847a1eb3253d434e": [
-  {
-   "match_id": null,
-   "reason": "A physics assignment and a physics presentation are different types of academic requirements.",
-   "verdict": "new"
-  }
- ],
- "match:d11a9631bd8a8f0b2e9abf53": [
-  {
-   "match_id": null,
-   "reason": "The new item is a presentation, which is a different type of activity than a written assignment submission.",
-   "verdict": "new"
-  }
- ],
- "match:d8a058b59acd1ee9a32a5f68": {
-  "match_id": "item2",
-  "reason": "The task is a preparatory step for the existing Physics presentation.",
-  "verdict": "related"
+ "match:9bcee8078d14b7ee1148eca9": {
+  "match_id": null,
+  "reason": "The mid-semester exam is a distinct academic event from the assignment and the presentation.",
+  "verdict": "new"
  },
- "match:fbc99646db9ff7430128eef4": {
+ "match:ac7d6667cc898088fa02c3be": {
   "match_id": "item2",
-  "reason": "The new item provides specific time and location details for the existing physics presentation on the same date.",
+  "reason": "The new item provides specific time and location details for the existing Physics 101 presentation on the same date.",
   "verdict": "same"
+ },
+ "match:c32c6a71eb272c56a67448b4": {
+  "match_id": "item1",
+  "reason": "Both items refer to the Physics 101 assignment but specify different due dates (2026-10-16 vs 2026-10-15) without indicating a change.",
+  "verdict": "conflict"
+ },
+ "match:eba41ee079af97453e3008cb": {
+  "match_id": null,
+  "reason": "The new item is a separate event regarding office hours and does not relate to the physics assignment or presentation.",
+  "verdict": "new"
  },
  "read:0d46243aa4416b2c3ef43f5f": "University Notice Board - Department of Physics\n\nDear students, the Physics Assignment 3 deadline has been\nextended to Monday, 19 October.\n\n- Prof. Sharma",
  "read:23c3d1a50a006f52c5c7c5d9": "Physics\nPresentation Day\n\nTuesday 20 October 2026\n10:00 AM\nRoom 204\n\nAll PHYS 101 groups present",

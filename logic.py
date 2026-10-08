@@ -4,12 +4,13 @@ import os
 import re
 import threading
 import time
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import settings
 
 # One lock around every load -> modify -> save, so two requests never overwrite each other.
 LOCK = threading.RLock()
+VERSION = 2
 
 
 # ---------- storage (one JSON file, written atomically) ----------
@@ -29,19 +30,17 @@ def atomic_write(path, obj):
 
 
 def empty_db():
-    return {"items": [], "next_id": 1, "order": 0, "seen": {}}
+    return {"version": VERSION, "files": [], "items": [], "next_id": 1, "next_file": 1, "order": 0, "seen": {}}
 
 
 def load():
-    if not os.path.exists(settings.DATA_FILE):
-        return empty_db()
     try:
         with open(settings.DATA_FILE, encoding="utf-8") as f:
             db = json.load(f)
-    except (ValueError, OSError):
+    except (OSError, ValueError):
         return empty_db()
-    for key, value in empty_db().items():
-        db.setdefault(key, value)
+    if not isinstance(db, dict) or db.get("version") != VERSION:
+        return empty_db()  # data from an older LifeOS version: start fresh
     return db
 
 
@@ -57,12 +56,12 @@ def reset():
 # ---------- validation: never trust model output ----------
 
 def clean_text(value, limit, collapse=True):
-    if value is None or isinstance(value, (dict, list)):
+    if value is None or isinstance(value, (dict, list, bool)):
         return None
     s = str(value).strip()
     if collapse:
         s = re.sub(r"\s+", " ", s)
-    if s.lower() in ("", "null", "none", "n/a", "unknown"):
+    if s.lower() in ("", "null", "none", "n/a", "unknown", "tbd"):
         return None
     return s[:limit]
 
@@ -85,6 +84,14 @@ def clean_time(value):
     return f"{int(m.group(1)):02d}:{m.group(2)}"
 
 
+LINK_RE = re.compile(r"(https?://\S+|www\.\S+|[\w.+-]+@[\w-]+\.[\w.]+|[\w-]+(\.[\w-]+)*\.(com|org|edu|net|io|ac\.\w+|edu\.\w+)(/\S*)?)", re.I)
+
+
+def clean_link(value):
+    s = clean_text(value, 200)
+    return s if s and " " not in s and LINK_RE.fullmatch(s) else None
+
+
 def clean_item(raw):
     """Return a safe item dict, or None if it has no usable title."""
     if not isinstance(raw, dict):
@@ -93,13 +100,32 @@ def clean_item(raw):
     if not title or not re.search(r"[A-Za-z0-9]", title):
         return None
     kind = str(raw.get("type") or "").strip().lower()
+    location, link = clean_text(raw.get("location"), 100), clean_link(raw.get("link"))
+    if location and clean_link(location):  # a website is not a place
+        link, location = link or clean_link(location), None
+    start = clean_time(raw.get("time"))
+    end = clean_time(raw.get("end_time"))
     return {
         "title": title,
         "type": kind if kind in ("task", "event") else "task",
         "date": clean_date(raw.get("date")),
-        "time": clean_time(raw.get("time")),
-        "location": clean_text(raw.get("location"), 100),
+        "time": start,
+        "end_time": end if start and end and end > start else None,
+        "location": location,
+        "link": link,
         "quote": clean_text(raw.get("quote"), 600, collapse=False) or "",  # keep line breaks: it must match the source
+    }
+
+
+def clean_extraction(raw):
+    """The model's answer for one file -> {"source", "summary", "items"} with every field checked."""
+    raw = raw if isinstance(raw, dict) else {}
+    source = str(raw.get("source") or "").strip().lower()
+    items = raw.get("items") if isinstance(raw.get("items"), list) else []
+    return {
+        "source": source if source in settings.DOC_TYPES else "other",
+        "summary": clean_text(raw.get("summary"), 400) or "",
+        "items": [i for i in (clean_item(x) for x in items[:40]) if i],
     }
 
 
@@ -147,24 +173,13 @@ def verify_quote(quote, source_text):
 
 # ---------- applying the AI's verdict ----------
 
-def make_source(src, ext, text):
-    """One 'source' entry: where it came from, the full text it was read from, and the exact quote."""
+def make_source(f, ext):
+    """One 'source' entry on an item: which file it came from and the exact quote."""
     return {
-        "file": src["file"],            # original (cleaned) file name
-        "stored": src["stored"],        # name on disk in uploads/
-        "url": src["url"],
-        "kind": src["kind"],            # image / pdf / text
-        "hash": src["hash"],
-        "source_type": src["label"],
-        "rank": src["rank"],
-        "order": src["order"],
-        "quote": ext["quote"],
-        "verified": ext["verified"],
-        "quote_span": find_span(ext["quote"], text),
-        "place_span": find_span(ext.get("location"), text),
-        "source_text": text[:8000],
-        "date": ext.get("date"),
-        "time": ext.get("time"),
+        "file_id": f["id"], "file": f["name"], "url": f["url"], "kind": f["kind"],
+        "source_type": f["source_label"], "rank": f["rank"], "order": f["order"],
+        "quote": ext["quote"], "verified": ext["verified"], "quote_span": ext["quote_span"],
+        "date": ext["date"], "time": ext["time"],
     }
 
 
@@ -178,13 +193,13 @@ def _change(kind, item, text):
     return {"kind": kind, "item_id": item["id"], "text": text}
 
 
-def apply(db, ext, verdict, src, text):
-    """Apply one extracted item to the board. Returns a change dict. Never deletes anything."""
+def apply(db, ext, verdict, f):
+    """Apply one extracted item (from file f) to the plan. Returns a change dict. Never deletes anything."""
     v = verdict["verdict"]
     target = find(db, verdict.get("match_id"))
     if v != "new" and target is None:
         v = "new"  # AI pointed at an item that doesn't exist -> safest is to add it as new
-    s = make_source(src, ext, text)
+    s = make_source(f, ext)
 
     # Safety rules on top of the AI verdict (plain Python double-check)
     if target and v == "same" and ext["date"] and target["date"] and ext["date"] != target["date"]:
@@ -198,10 +213,10 @@ def apply(db, ext, verdict, src, text):
         item = {
             "id": f"item{db['next_id']}",
             "title": ext["title"], "type": ext["type"], "date": ext["date"], "time": ext["time"],
-            "location": ext["location"], "status": "ok",
+            "end_time": ext["end_time"], "location": ext["location"], "link": ext["link"], "status": "ok",
             "parent_id": target["id"] if v == "related" else None,
             "sources": [s], "date_source": 0, "conflict": None, "updated": False,
-            "history": [f"Created from {src['file']} ({nice_date(ext['date'])})"],
+            "history": [f"Created from {f['name']} ({nice_date(ext['date'])})"],
         }
         db["next_id"] += 1
         db["items"].append(item)
@@ -212,34 +227,41 @@ def apply(db, ext, verdict, src, text):
 
     target["sources"].append(s)
 
+    # a more trusted file that agrees with the item gives the clearer title (e.g. the official brief beats a chat)
+    title_rank = target.get("title_rank", target["sources"][0]["rank"])
+    if v in ("same", "update") and f["rank"] > title_rank and ext["title"].lower() != target["title"].lower():
+        target["history"].append(f"Renamed from \"{target['title']}\" ({f['name']})")
+        target["title"], target["title_rank"] = ext["title"], f["rank"]
+
     if v == "same":
         added = []
-        for field in ("time", "location"):
+        for field in ("time", "end_time", "location", "link"):
             if ext[field] and not target.get(field):
                 target[field] = ext[field]
-                added.append(f"{field} {ext[field]}")
+                added.append(f"{field.replace('_', ' ')} {ext[field]}")
         if ext["date"] and not target["date"]:
             target["date"] = ext["date"]
             added.append(f"date {nice_date(ext['date'])}")
         extra = f", added {', '.join(added)}" if added else ""
-        target["history"].append(f"Confirmed by {src['file']}{extra}")
+        target["history"].append(f"Confirmed by {f['name']}{extra}")
         return _change("same", target, f"\"{target['title']}\"{extra}")
 
     if v == "update":
         old = when(target["date"], target["time"])
         target["date"] = ext["date"] or target["date"]
         target["time"] = ext["time"] or target["time"]
-        if ext["location"]:
-            target["location"] = ext["location"]
+        for field in ("end_time", "location", "link"):
+            if ext[field]:
+                target[field] = ext[field]
         target["date_source"] = len(target["sources"]) - 1
         note = " (open conflict closed)" if target["status"] == "conflict" else ""
         target["status"], target["conflict"], target["updated"] = "ok", None, True
-        target["history"].append(f"{old} -> {when(target['date'], target['time'])} ({src['file']}){note}")
+        target["history"].append(f"{old} -> {when(target['date'], target['time'])} ({f['name']}){note}")
         return _change("update", target, f"\"{target['title']}\" {old} -> {when(target['date'], target['time'])}")
 
     # conflict: keep every date with its source, suggest one, let the user choose
-    new_opt = {"date": ext["date"], "time": ext["time"], "file": src["file"], "source_type": src["label"],
-               "rank": src["rank"], "order": src["order"], "source_index": len(target["sources"]) - 1}
+    new_opt = {"date": ext["date"], "time": ext["time"], "file": f["name"], "source_type": f["source_label"],
+               "rank": f["rank"], "order": f["order"], "source_index": len(target["sources"]) - 1}
     if target.get("conflict"):
         options = target["conflict"]["options"]
     else:
@@ -253,7 +275,7 @@ def apply(db, ext, verdict, src, text):
     target["conflict"] = {"options": options, "suggested": suggest(options), "reason": verdict.get("reason", "")}
     target["history"].append(
         f"Conflict: {when(options[0]['date'], options[0]['time'])} ({options[0]['file']}) vs "
-        f"{when(new_opt['date'], new_opt['time'])} ({src['file']})")
+        f"{when(new_opt['date'], new_opt['time'])} ({f['name']})")
     return _change("conflict", target, f"\"{target['title']}\" {nice_date(options[0]['date'])} vs {nice_date(new_opt['date'])}")
 
 
@@ -270,6 +292,8 @@ def resolve(db, item_id, choice):
     return item
 
 
+# ---------- what the AI sees ----------
+
 def summary_for_ai(db):
     """Short version of the items, sent to the AI for matching (no history, no file paths)."""
     return [{k: i[k] for k in ("id", "title", "type", "date", "time", "location")} for i in db["items"]]
@@ -283,9 +307,54 @@ def summary_for_answer(db):
         row = {"title": i["title"], "type": i["type"], "date": i["date"], "time": i["time"],
                "location": i["location"], "status": i["status"],
                "source_files": sorted({s["file"] for s in i["sources"]})}
+        if i.get("end_time"):
+            row["end_time"] = i["end_time"]
+        if i.get("link"):
+            row["link"] = i["link"]
         if parent:
             row["for"] = parent["title"]
         if i["conflict"]:
             row["possible_dates"] = [f"{o['date']} ({o['file']})" for o in i["conflict"]["options"]]
         out.append(row)
     return sorted(out, key=lambda r: r["date"] or "9999")
+
+
+def documents_for_answer(db, budget=40000):
+    """Full text of every file (shortened if there is a lot), so answers can use the files' content."""
+    files = db["files"]
+    per_file = max(1500, min(10000, budget // max(1, len(files))))
+    return [{"file": f["name"], "kind": f["source_label"], "summary": f["summary"], "text": f["text"][:per_file]}
+            for f in files]
+
+
+# ---------- calendar export ----------
+
+def _ics_text(s):
+    return str(s).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
+
+
+def calendar_ics(db):
+    """All dated items as an .ics file that Google Calendar, Outlook and Apple Calendar can import."""
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//LifeOS//EN", "CALSCALE:GREGORIAN"]
+    for i in db["items"]:
+        if not i.get("date"):
+            continue
+        d = date.fromisoformat(i["date"])
+        lines += ["BEGIN:VEVENT", f"UID:{i['id']}-{i['date']}@lifeos", f"DTSTAMP:{stamp}"]
+        if i.get("time"):
+            start = datetime.combine(d, datetime.strptime(i["time"], "%H:%M").time())
+            end = (datetime.combine(d, datetime.strptime(i["end_time"], "%H:%M").time())
+                   if i.get("end_time") else start + timedelta(hours=1))
+            lines += [f"DTSTART:{start:%Y%m%dT%H%M%S}", f"DTEND:{end:%Y%m%dT%H%M%S}"]
+        else:
+            lines += [f"DTSTART;VALUE=DATE:{d:%Y%m%d}", f"DTEND;VALUE=DATE:{d + timedelta(days=1):%Y%m%d}"]
+        title = ("[Date not confirmed] " if i["status"] == "conflict" else "") + i["title"]
+        lines.append(f"SUMMARY:{_ics_text(title)}")
+        if i.get("location"):
+            lines.append(f"LOCATION:{_ics_text(i['location'])}")
+        files = ", ".join(sorted({s["file"] for s in i["sources"]}))
+        lines.append(f"DESCRIPTION:{_ics_text('From ' + files + (' - ' + i['link'] if i.get('link') else ''))}")
+        lines.append("END:VEVENT")
+    lines.append("END:VCALENDAR")
+    return "\r\n".join(lines) + "\r\n"

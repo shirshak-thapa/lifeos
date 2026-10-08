@@ -3,115 +3,97 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
   <title>LifeOS</title>
   <link rel="icon" type="image/png" href="logo-64.png">
   <link rel="stylesheet" href="style.css">
 </head>
-<body data-tab="timeline">
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="LifeOS home">
-      <img class="badge" src="logo-badge.png" alt="" width="40" height="40">
-      <span class="wordmark"><span class="wm-life">Life</span><span class="wm-os">OS</span></span>
-      <span class="tagline">One system for a better you</span>
-    </a>
-    <div class="topbar-right">
-      <span class="model-pill" id="model-pill" title="The open-weight model that reads and organizes your sources">
-        <span class="pill-dot" aria-hidden="true"></span><span id="model-name">gemma</span> · open weights
-      </span>
-      <button class="btn-quiet" id="reset" type="button"><span data-icon="reset"></span>Reset demo</button>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="/">
+        <img src="logo-64.png" alt="" width="28" height="28">
+        <span>LifeOS</span>
+      </a>
+      <p class="tagline">Drop everything. We'll organize it, and show you why.</p>
+      <nav class="top-actions">
+        <a class="text-btn" href="/api/calendar.ics" download id="export">Export to calendar</a>
+        <button class="text-btn" type="button" id="reset">Reset</button>
+      </nav>
     </div>
   </header>
 
-  <nav class="tabs" aria-label="Sections">
-    <button type="button" data-tab="inbox">Inbox</button>
-    <button type="button" data-tab="timeline">Timeline</button>
-    <button type="button" data-tab="evidence">Evidence</button>
-  </nav>
-
-  <main class="desk">
-    <!-- 1. INBOX -->
-    <section class="zone inbox" id="zone-inbox" aria-label="Inbox">
-      <div class="progress" id="progress" aria-hidden="true"></div>
-      <h2 class="label">Inbox</h2>
-
-      <label class="drop" id="drop">
-        <input type="file" id="file" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
-        <span class="drop-empty" id="drop-empty">
-          <span data-icon="upload"></span>
-          <strong>Drop a screenshot, poster or PDF</strong>
-          <small>click to choose · or Ctrl+V a screenshot</small>
-        </span>
-        <span class="drop-file" id="drop-file" hidden>
-          <img id="drop-thumb" alt="" hidden>
-          <span class="drop-icon" id="drop-icon" data-icon="file"></span>
-          <span class="drop-meta"><strong id="drop-name"></strong><small id="drop-size"></small></span>
-        </span>
-      </label>
-      <button class="link-btn" id="drop-clear" type="button" hidden>Remove file</button>
-
-      <textarea id="text" rows="3" placeholder="…or paste text from a chat, email or notice"></textarea>
-
-      <p class="label seg-label" id="source-label">Where is this from?</p>
-      <div class="segmented" id="source" role="radiogroup" aria-labelledby="source-label">
-        <label><input type="radio" name="source" value="official"><span>Official notice<i class="rank" data-rank="4"></i></span></label>
-        <label><input type="radio" name="source" value="teacher"><span>Teacher<i class="rank" data-rank="3"></i></span></label>
-        <label><input type="radio" name="source" value="classmate" checked><span>Classmate<i class="rank" data-rank="2"></i></span></label>
-        <label><input type="radio" name="source" value="note"><span>My note<i class="rank" data-rank="1"></i></span></label>
+  <main class="wrap">
+    <!-- Add files -->
+    <section class="intake" aria-labelledby="intake-title">
+      <h1 id="intake-title" class="sr-only">Add files</h1>
+      <div class="drop" id="drop">
+        <input type="file" id="file-input" multiple
+               accept=".pdf,.png,.jpg,.jpeg,.webp,.avif,.gif,.bmp,.tif,.tiff,.txt,.md,application/pdf,image/*,text/plain">
+        <p class="drop-title">Drop PDFs, posters, screenshots or photos here</p>
+        <p class="drop-sub">
+          <button type="button" class="link" id="browse">Choose files</button>
+          · several at once · paste a screenshot with Ctrl+V ·
+          <button type="button" class="link" id="paste-toggle" aria-expanded="false" aria-controls="paste">paste text</button>
+        </p>
       </div>
 
-      <button class="btn-primary" id="process" type="button">Process</button>
-
-      <ol class="stepper" id="stepper" hidden>
-        <li>Reading</li><li>Extracting</li><li>Matching</li><li>Verifying</li>
-        <li class="elapsed" id="elapsed">0.0s</li>
-      </ol>
-      <p class="error" id="error" role="alert" hidden></p>
-      <div class="results" id="results"></div>
-      <ul class="log" id="log"></ul>
-
-      <div class="demo" id="demo" hidden>
-        <h2 class="label">Demo story</h2>
-        <ol class="demo-steps" id="demo-steps"></ol>
-      </div>
-    </section>
-
-    <!-- 2. TIMELINE -->
-    <section class="zone timeline" id="zone-timeline" aria-label="Timeline">
-      <form class="cmd" id="ask-form" role="search">
-        <span data-icon="search"></span>
-        <input id="question" autocomplete="off" maxlength="300" placeholder="Ask your list anything…" aria-label="Ask a question about your list">
-        <kbd>Enter</kbd>
+      <form class="paste" id="paste" hidden>
+        <label for="paste-text" class="sr-only">Text to add</label>
+        <textarea id="paste-text" rows="4" maxlength="20000" placeholder="Paste a message, email or notice…"></textarea>
+        <div class="paste-actions">
+          <button type="submit" class="btn">Add text</button>
+          <button type="button" class="text-btn" id="paste-cancel">Cancel</button>
+        </div>
       </form>
-      <div class="examples" id="examples">
-        <button type="button">What do I need to do before Tuesday?</button>
-        <button type="button">What is due this week?</button>
-        <button type="button">Which dates are not confirmed?</button>
-      </div>
-      <div class="answer" id="answer" hidden>
-        <div class="answer-head"><span class="label">Answer · from your list only</span>
-          <button class="link-btn" id="answer-close" type="button">Close</button></div>
-        <div class="answer-body" id="answer-body"></div>
-      </div>
 
-      <div class="rail" id="board" role="listbox" aria-label="Tasks and events"></div>
-      <div class="empty" id="empty" hidden>
-        <img src="logo-badge.png" alt="LifeOS" width="120" height="120">
-        <ol>
-          <li><span>01</span>Drop it in.</li>
-          <li><span>02</span>We read it.</li>
-          <li><span>03</span>You see the evidence.</li>
-        </ol>
+      <ol class="queue" id="queue" aria-label="Files being processed"></ol>
+
+      <p class="samples" id="samples" hidden>
+        <span>No files handy? Try the samples, in order:</span>
+        <span id="sample-list"></span>
+      </p>
+    </section>
+
+    <!-- Ask -->
+    <section class="ask" aria-labelledby="ask-title">
+      <h2 id="ask-title" class="sr-only">Ask about your files</h2>
+      <form class="ask-form" id="ask-form">
+        <label for="question" class="sr-only">Question</label>
+        <input id="question" type="search" maxlength="300" autocomplete="off"
+               placeholder="Search or ask about your files, e.g. “What should I bring to the exam?”">
+        <button type="submit" class="btn" id="ask-btn">Ask</button>
+      </form>
+      <p class="suggest" id="suggest">
+        <button type="button" class="link">What do I need to do before Tuesday?</button>
+        <button type="button" class="link">Which dates are not confirmed?</button>
+        <button type="button" class="link">Summarize my files</button>
+      </p>
+      <div class="answer" id="answer" hidden aria-live="polite">
+        <div class="answer-body" id="answer-body"></div>
+        <div class="matches" id="matches"></div>
       </div>
     </section>
 
-    <!-- 3. EVIDENCE -->
-    <aside class="zone evidence" id="zone-evidence" aria-label="Evidence">
-      <div id="evidence"><p class="hint">Select a row to see where it came from.</p></div>
-    </aside>
+    <div class="columns">
+      <!-- Plan: one list of everything, by date -->
+      <section class="plan" aria-labelledby="plan-title">
+        <h2 id="plan-title">Your plan <span class="count" id="plan-count"></span></h2>
+        <div id="plan"></div>
+      </section>
+
+      <!-- Files: what was found in each file -->
+      <section class="files" aria-labelledby="files-title">
+        <h2 id="files-title">Files <span class="count" id="files-count"></span></h2>
+        <div id="files"></div>
+      </section>
+    </div>
   </main>
 
-  <dialog class="lightbox" id="lightbox"><img id="lightbox-img" alt=""><p>Click anywhere to close</p></dialog>
+  <footer class="wrap foot">
+    <p>Files are read and organized by <strong id="model-name">Gemma 4</strong>, an open-weight model, through the Gemini API.
+      Quotes are checked against each file by plain code. Relative dates are counted from <span id="demo-date">Mon 12 Oct 2026</span> (demo date).</p>
+  </footer>
+
   <div class="sr-only" id="live" aria-live="polite"></div>
   <script src="app.js"></script>
 </body>

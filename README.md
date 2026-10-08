@@ -2,7 +2,7 @@
 
 **Drop everything. We'll organize it, and show you why.**
 
-LifeOS is a web app for university students. You drop in messy information — chat screenshots, PDF notices, posters, photos of handwritten notes, or pasted text — and an open-weight AI model turns it into **one trusted list** of tasks and events. Every item shows the exact quote it came from, later messages **update** items instead of duplicating them, and when two sources disagree LifeOS shows a **conflict** and lets you choose.
+LifeOS is a web app for university students. Drop in messy information (PDF notices, posters, chat screenshots, photos of notes, pasted text), several files at once, and an open-weight AI model turns it into **one plan** of tasks and events. Each file gets a short summary with its key dates highlighted, every item shows the exact quote it came from, later files **update** items instead of duplicating them, and when two files disagree LifeOS shows a **conflict** and lets you choose. You can also ask questions about your files and get answers that name the file they come from.
 
 ## Open-weight AI at the core
 
@@ -10,14 +10,14 @@ LifeOS uses Google's open-weight **Gemma 4** model (`gemma-4-26b-a4b-it`, backup
 
 | Step | Who does it | What happens |
 |---|---|---|
-| **Read** | Gemma | Images (screenshots, posters, notes) are sent to Gemma, which copies out the text exactly. PDFs are read with `pypdf`; pasted text is used as is. |
-| **Extract** | Gemma | Finds every task and event: title, type, date, time, location and the exact quote. Relative dates ("this Friday") are resolved against a fixed demo date (Mon 12 Oct 2026). |
-| **Verify** | Plain Python | Checks that each quote really appears in the source text (ignoring case/spaces) → green "verified" or yellow "check this". |
-| **Match** | Gemma | Compares each new item with the existing list and returns `new`, `same`, `update`, `conflict` or `related`, with a reason. |
-| **Apply** | Plain Python | Fixed rules turn the verdict into changes: add, merge details, change a date with a history line, open a conflict (suggesting the higher-ranked source), or link a helper task. Nothing is ever deleted automatically. |
-| **Answer** | Gemma | The Ask box answers questions using **only** the stored items, with dates and source files. |
+| **Read** | Gemma | Images (screenshots, posters, photos; PNG, JPG, WebP, AVIF…) are sent to Gemma, which copies out the text exactly. PDFs are read with `pypdf`; scanned PDF pages (no text inside) are sent to Gemma to read. |
+| **Extract** | Gemma | For each file: who it is from (official notice, teacher, classmate, personal note), a 1–2 sentence summary, and every task and event with title, date, start/end time, place, link and the exact quote. Relative dates ("this Friday") are resolved against a fixed demo date (Mon 12 Oct 2026). |
+| **Verify** | Plain Python | Every model field is validated (real dates, times, lengths), and each quote is checked against the file's text, so you can see whether it really is in the file. |
+| **Match** | Gemma | Compares each new item with your plan and returns `new`, `same`, `update`, `conflict` or `related`, with a reason. |
+| **Apply** | Plain Python | Fixed rules turn the verdict into changes: add, merge details, change a date with a history line, open a conflict (suggesting the more trusted file), or link a helper task. Nothing is deleted automatically. |
+| **Answer** | Gemma | The search box answers questions using **only** your files' full text and your plan, naming the file for each fact. A plain keyword search shows matching lines instantly, even if the AI is busy. |
 
-**Honest note:** the model is not run on your own computer. It is called through the **Gemini API (Google AI Studio free tier)**, which hosts the open-weight Gemma model. The model name is one setting (`LIFEOS_MODEL` in `settings.py` / `.env`), so it can be pointed at another Gemma variant.
+**Honest note:** the model is not run on your own computer. It is called through the **Gemini API (Google AI Studio free tier)**, which hosts the open-weight Gemma model. The model name is one setting (`LIFEOS_MODEL` in `settings.py` / `.env`).
 
 ## How to run it (Windows, beginner friendly)
 
@@ -40,34 +40,45 @@ LifeOS uses Google's open-weight **Gemma 4** model (`gemma-4-26b-a4b-it`, backup
 
 ## Replay the demo
 
-The fake demo files are in `demo_inputs/` (re-create them with `python make_demo_files.py`). Click **Reset demo**, then drop them in this order:
+The fake sample files are in `demo_inputs/` (re-create them with `python make_demo_files.py`). Click **Reset**, then click the sample links under the drop zone in order (or drop the files yourself):
 
-1. `classmate_chat.png` — *Classmate* → 2 new items (assignment Fri 16 Oct, presentation Tue 20 Oct)
-2. `assignment_brief.pdf` — *Official notice* → conflict on the assignment (Fri vs Thu, Thu suggested). Click the suggested **Thu 15 Oct**.
-3. `seminar_poster.png` — *Official notice* → merges into the presentation, adds 10:00 and Room 204
-4. `note.png` — *My note* → "Ask Ram for the presentation slides", shown as *For: Physics presentation*
+1. `classmate_chat.png` → 2 new items (assignment Fri 16 Oct, presentation Tue 20 Oct)
+2. `assignment_brief.pdf` → conflict on the assignment (Fri vs Thu; Thu suggested, because an official notice beats a chat). Click **Thu 15 Oct**.
+3. `seminar_poster.png` → merges into the presentation, adds 10:00 and Room 204
+4. `note.png` → "Ask Ram for the presentation slides", shown under the presentation
 5. Ask: *What do I need to do before Tuesday?*
-6. `prof_notice.png` — *Teacher* → update: assignment becomes Mon 19 Oct, with a history line
+6. `prof_notice.png` → update: the assignment moves to Mon 19 Oct, with a history line
+7. `course_schedule.pdf` (3 pages) → lab report, exam, reading week and office hours. Ask: *What should I bring to the exam?*
 
-Every AI answer is saved in `cache.json` (keyed by a hash of the input and the step), so this exact story **replays instantly and identically, even without an API key**. Set `LIFEOS_CACHE=0` to always call the model.
+Every AI answer is saved in `cache.json` (keyed by a hash of the input and the step), so this story **replays instantly and identically, even without an API key**. Set `LIFEOS_CACHE=0` to always call the model.
 
 Automatic check of the whole story: `python demo_test.py` (prints PASS/FAIL per step).
 
+## Features
+
+- Several files at once (PDF, PNG, JPG, WebP, AVIF, GIF, TXT), Ctrl+V for screenshots, or pasted text
+- Per file: key dates highlighted, then a short summary, then the full text with the quotes marked
+- One plan by date, with conflicts, updates, helper tasks and the history of every change
+- Search/ask box answered from your files' content, with clickable file names
+- The same file twice is recognized ("already added")
+- **Export to calendar** (.ics for Google Calendar, Outlook, Apple Calendar)
+
 ## Files
 
-- `main.py` — FastAPI server and the pipeline (read → extract → verify → match → apply)
-- `ai.py` — all Gemma calls: prompts, JSON parsing, retry, backup model, cache
-- `logic.py` — plain-Python rules: storage, quote verification, applying verdicts, conflicts
-- `settings.py` — model names, demo date, cache switch, source ranks
-- `static/` — the one-page front end (HTML, CSS, JavaScript; no build tools)
-- `make_demo_files.py`, `demo_inputs/` — the fake demo files
-- `demo_test.py` — runs the demo story and prints PASS/FAIL
-- `data.json` (items), `uploads/` (your files) — local only, not committed
+- `main.py`: FastAPI server and the pipeline (read → extract → verify → match → apply)
+- `ai.py`: all Gemma calls: prompts, JSON parsing, retries, backup model, cache
+- `logic.py`: plain-Python rules: storage, validation, quote checks, conflicts, calendar export
+- `settings.py`: model names, demo date, cache switch, source trust ranks
+- `static/`: the one-page front end (HTML, CSS, JavaScript; no build tools)
+- `make_demo_files.py`, `demo_inputs/`: the fake sample files
+- `make_logo_assets.py`: makes the round favicon from `static/logo.png`
+- `demo_test.py`: runs the demo story and prints PASS/FAIL
+- `data.json` (your plan) and `uploads/` (your files): local only, never committed
 
 ## Privacy
 
-Use **fake data only**. Text and images you drop in are sent to the Gemini API, and AI answers are stored in `cache.json`. The API key lives only in `.env`, which is never committed and never written to the cache.
+Use **fake data only** for demos. Text and images you add are sent to the Gemini API, and AI answers are stored in `cache.json`. The API key lives only in `.env`, which is never committed and never written to the cache.
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).

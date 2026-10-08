@@ -13,6 +13,5 @@ size = badge.size[0]
 mask = Image.new("L", (size * 4, size * 4), 0)  # draw 4x bigger for smooth edges
 ImageDraw.Draw(mask).ellipse((0, 0, size * 4 - 1, size * 4 - 1), fill=255)
 badge.putalpha(mask.resize(badge.size, Image.LANCZOS))
-badge.resize((512, 512), Image.LANCZOS).save("static/logo-badge.png", optimize=True)
 badge.resize((64, 64), Image.LANCZOS).save("static/logo-64.png", optimize=True)
-print("saved static/logo-badge.png and static/logo-64.png; circle", box)
+print("saved static/logo-64.png; circle", box)

@@ -10,19 +10,23 @@ BACKUP_MODEL = os.getenv("LIFEOS_BACKUP_MODEL", "gemma-4-31b-it")
 # Fixed "today" so relative dates ("this Friday") always resolve the same way in the demo.
 DEMO_DATE = os.getenv("LIFEOS_DEMO_DATE", "2026-10-12")
 
-# Cache AI answers in cache.json so the demo replays instantly (set to "0" to turn off).
+# Cache AI answers so the demo replays instantly (set LIFEOS_CACHE=0 to turn off).
 CACHE_ENABLED = os.getenv("LIFEOS_CACHE", "1") != "0"
 
 API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-DATA_FILE = "data.json"
-CACHE_FILE = "cache.json"
-UPLOAD_DIR = "uploads"
+DATA_FILE = os.getenv("LIFEOS_DATA_FILE", "data.json")
+CACHE_FILE = os.getenv("LIFEOS_CACHE_FILE", "cache.json")
+UPLOAD_DIR = os.getenv("LIFEOS_UPLOAD_DIR", "uploads")
 
-# Where a piece of information came from, and how much we trust it (higher = more trusted).
-SOURCE_TYPES = {
+# The model decides what kind of source a file is. Higher rank = more trusted when two files disagree.
+DOC_TYPES = {
     "official": {"label": "Official notice", "rank": 4},
     "teacher": {"label": "Teacher", "rank": 3},
     "classmate": {"label": "Classmate", "rank": 2},
-    "note": {"label": "My note", "rank": 1},
+    "other": {"label": "Other", "rank": 2},
+    "personal": {"label": "Personal note", "rank": 1},
 }
+
+MAX_PDF_PAGES = 30        # pages read from one PDF
+MAX_SCANNED_PAGES = 8     # scanned PDF pages sent to the model to be read
