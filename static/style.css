@@ -32,7 +32,7 @@ button.ghost { background: transparent; color: var(--muted); border: 1px solid v
 
 .ask { display: flex; gap: 8px; }
 .ask input { margin: 0; }
-.answer { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px;
+.answer { background: #f5f5ff; border: 1px solid #dcdcf7; border-radius: 10px;
   padding: 12px 14px; white-space: pre-wrap; font-family: inherit; }
 
 .board { display: grid; gap: 14px; margin-top: 16px; }
