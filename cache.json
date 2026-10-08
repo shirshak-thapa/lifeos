@@ -1,0 +1,104 @@
+{
+ "answer:7ee646bcfcedb691ffcd59a9": "- 2026-10-15: Physics assignment (assignment_brief.pdf, classmate_chat.png)\n- no date: Ask Ram for the presentation slides (note.png)",
+ "extract:063e12ddd89b9ba742d7dbfd": {
+  "items": [
+   {
+    "date": "2026-10-19",
+    "location": null,
+    "quote": "the Physics Assignment 3 deadline has been extended to Monday, 19 October.",
+    "time": null,
+    "title": "Physics Assignment 3 deadline",
+    "type": "task"
+   }
+  ]
+ },
+ "extract:08470d85a8271660fc547b10": {
+  "items": [
+   {
+    "date": "2026-10-16",
+    "location": null,
+    "quote": "guys physics assignment due this friday!!",
+    "time": null,
+    "title": "Physics assignment",
+    "type": "task"
+   },
+   {
+    "date": "2026-10-20",
+    "location": null,
+    "quote": "our presentation is on tuesday 20th",
+    "time": null,
+    "title": "Physics presentation",
+    "type": "event"
+   }
+  ]
+ },
+ "extract:608d7074a0291be9649d2fb3": {
+  "items": [
+   {
+    "date": null,
+    "location": null,
+    "quote": "Ask Ram for the presentation slides",
+    "time": null,
+    "title": "Ask Ram for the presentation slides",
+    "type": "task"
+   }
+  ]
+ },
+ "extract:ec80cfc5a7c739ecec5d0b4e": {
+  "items": [
+   {
+    "date": "2026-10-20",
+    "location": "Room 204",
+    "quote": "Physics\nPresentation Day\n\nTuesday 20 October 2026\n10:00 AM\nRoom 204",
+    "time": "10:00",
+    "title": "Physics Presentation Day",
+    "type": "event"
+   }
+  ]
+ },
+ "extract:fe8dca6e716767ab6acaf1b5": {
+  "items": [
+   {
+    "date": "2026-10-15",
+    "location": "student portal",
+    "quote": "Submission deadline: Thursday, 15 October 2026, 11:59 PM",
+    "time": "23:59",
+    "title": "Physics Assignment 3 Submission",
+    "type": "task"
+   }
+  ]
+ },
+ "match:1574d8bf722aceaf11b46582": [
+  {
+   "match_id": "item1",
+   "reason": "The new item is a physics assignment but specifies a different date (2026-10-15) than the existing one (2026-10-16) without indicating a change.",
+   "verdict": "conflict"
+  }
+ ],
+ "match:73fcbafbe622e8d56a96e375": {
+  "match_id": "item1",
+  "reason": "The new item refers to the physics assignment and the quote explicitly states the deadline has been extended.",
+  "verdict": "update"
+ },
+ "match:78e5899d847a1eb3253d434e": [
+  {
+   "match_id": null,
+   "reason": "A physics assignment and a physics presentation are different types of academic requirements.",
+   "verdict": "new"
+  }
+ ],
+ "match:d8a058b59acd1ee9a32a5f68": {
+  "match_id": "item2",
+  "reason": "The task is a preparatory step for the existing Physics presentation.",
+  "verdict": "related"
+ },
+ "match:fbc99646db9ff7430128eef4": {
+  "match_id": "item2",
+  "reason": "The new item provides specific time and location details for the existing physics presentation on the same date.",
+  "verdict": "same"
+ },
+ "read:0d46243aa4416b2c3ef43f5f": "University Notice Board - Department of Physics\n\nDear students, the Physics Assignment 3 deadline has been\nextended to Monday, 19 October.\n\n- Prof. Sharma",
+ "read:23c3d1a50a006f52c5c7c5d9": "Physics\nPresentation Day\n\nTuesday 20 October 2026\n10:00 AM\nRoom 204\n\nAll PHYS 101 groups present",
+ "read:849e0e9cc6342af501d0f556": "Physics 101 Group\n\nAarav (classmate)\nguys physics assignment due this friday!! and our presentation is on tuesday 20th\n9:41 AM",
+ "read:d3cb7dc255c7c9951f08435d": "Ask Ram for the presentation\nslides"
+}
