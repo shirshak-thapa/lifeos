@@ -568,11 +568,6 @@ function renderFiles() {
   [...state.files].sort((a, b) => (b.order || 0) - (a.order || 0)).forEach((f, i) => box.append(fileEl(f, i)));
 }
 
-function renderSamples() {
-  const used = new Set(state.files.map((f) => f.name));
-  for (const b of $("sample-list").querySelectorAll(".sample")) b.classList.toggle("done", used.has(b.dataset.name));
-}
-
 function applyState(s) {
   if (!s) return;
   state.files = Array.isArray(s.files) ? s.files : [];
@@ -585,7 +580,6 @@ function render() {
   renderFilters();
   renderPlan();
   renderFiles();
-  renderSamples();
   // flashes play once
   state.flash = new Set();
   state.flashFile = null;
@@ -649,15 +643,10 @@ async function runQueue() {
       job.started = performance.now();
       renderQueue();
       try {
-        let out;
-        if (job.sample) {
-          out = await api(`/api/samples/${encodeURIComponent(job.sample)}`, { method: "POST" });
-        } else {
-          const form = new FormData();
-          if (job.file) form.append("file", job.file, job.file.name);
-          else form.append("text", job.text);
-          out = await api("/api/process", { method: "POST", body: form });
-        }
+        const form = new FormData();
+        if (job.file) form.append("file", job.file, job.file.name);
+        else form.append("text", job.text);
+        const out = await api("/api/process", { method: "POST", body: form });
         applyState(out.state);
         job.status = "done";
         if (out.duplicate) {
@@ -900,15 +889,6 @@ for (const holder of document.querySelectorAll("[data-icon]")) holder.prepend(ic
     if (info && info.model) $("model-name").textContent = `Gemma 4 (${info.model})`;
   } catch (err) { /* keep defaults */ }
   $("demo-date").textContent = parseDate(DEMO_DATE).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-  try {
-    const names = await api("/api/samples");
-    if (Array.isArray(names) && names.length) {
-      $("sample-list").replaceChildren(...names.map((name, i) => el("button", {
-        type: "button", class: "sample", "data-name": name, title: `Add ${name}`, onclick: () => enqueue([{ name, sample: name }]),
-      }, el("b", { text: i + 1 }), name)));
-      $("samples").hidden = false;
-    }
-  } catch (err) { /* samples are optional */ }
   try {
     applyState(await api("/api/state"));
   } catch (err) {

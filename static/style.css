@@ -64,22 +64,12 @@ mark { background: var(--marker); color: var(--ink); border-radius: 3px; padding
 .brand img { display: block; height: 44px; width: auto; }
 .top-actions { margin-left: auto; display: flex; align-items: center; gap: .4rem; }
 
-.hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto 1fr;
-  grid-template-areas: "copy tray" "samples tray"; gap: 1.6rem 3rem; align-items: start; padding-top: 1.5rem; padding-bottom: 2.25rem; }
+.hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  grid-template-areas: "copy tray"; gap: 1.6rem 3rem; align-items: start; padding-top: 1.5rem; padding-bottom: 2.25rem; }
 .hero-copy { grid-area: copy; }
 .hero-tray { grid-area: tray; }
 .hero h1 { font: 700 clamp(2.9rem, 6vw, 5rem)/.9 var(--display); font-stretch: 75%; font-variation-settings: "wdth" 75; text-transform: uppercase; letter-spacing: -.005em; }
 .lede { margin-top: 1.1rem; font-size: 1.12rem; color: var(--ink-2); max-width: 34ch; }
-.samples { grid-area: samples; }
-.samples-label { font: 600 .8rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
-.sample-list { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .55rem; }
-.sample { display: inline-flex; align-items: center; gap: .45rem; border: 1.5px solid var(--ink); background: var(--card); border-radius: 999px;
-  padding: .22rem .75rem .22rem .3rem; font: .8rem var(--mono); transition: background-color .15s, color .15s, transform .15s var(--ease); }
-.sample b { display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 50%; background: var(--ink); color: var(--marker);
-  font: 700 .75rem var(--display); }
-.sample:hover { background: var(--ink); color: #fff; transform: translateY(-1px); }
-.sample.done { opacity: .55; }
-.sample.done b { background: var(--cool); color: #fff; }
 
 /* the drop tray: a white card that sits on the band like a sticker */
 .tray { position: relative; background: var(--card); border: 2px solid var(--ink); border-radius: 18px; box-shadow: 7px 7px 0 var(--ink);
@@ -351,7 +341,7 @@ kbd { font: 600 .8rem var(--mono); color: var(--muted); border: 1.5px solid var(
 
 /* ---------- small screens ---------- */
 @media (max-width: 900px) {
-  .hero { grid-template-columns: 1fr; grid-template-rows: none; grid-template-areas: "copy" "tray" "samples"; gap: 1.8rem; padding-top: .5rem; }
+  .hero { grid-template-columns: 1fr; grid-template-areas: "copy" "tray"; gap: 1.8rem; padding-top: .5rem; }
   .lede { max-width: none; }
 }
 @media (max-width: 640px) {

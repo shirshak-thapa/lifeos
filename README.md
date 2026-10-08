@@ -40,7 +40,7 @@ LifeOS uses Google's open-weight **Gemma 4** model (`gemma-4-26b-a4b-it`, backup
 
 ## Replay the demo
 
-The fake sample files are in `demo_inputs/` (re-create them with `python make_demo_files.py`). Click **Reset**, then click the sample links under the drop zone in order (or drop the files yourself):
+The fake sample files are in `demo_inputs/` (re-create them with `python make_demo_files.py`). Click **Reset**, then drop the files from `demo_inputs/` onto the page in this order (one at a time, or several at once):
 
 1. `classmate_chat.png` → 2 new items (assignment Fri 16 Oct, presentation Tue 20 Oct)
 2. `assignment_brief.pdf` → conflict on the assignment (Fri vs Thu; Thu suggested, because an official notice beats a chat). Click **Thu 15 Oct**.
