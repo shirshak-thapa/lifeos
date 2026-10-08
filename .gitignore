@@ -222,3 +222,7 @@ __marimo__/
 # LifeOS local data (never commit)
 data.json
 uploads/
+cache.json
+data.json
+uploads/
+.impeccable/
