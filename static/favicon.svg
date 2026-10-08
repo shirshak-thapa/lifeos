@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="72" height="72">
+  <!-- the icon part of lifeos-logo.svg -->
+  <rect x="9" y="9" width="60" height="60" rx="14" fill="#161B33"/>
+  <rect x="3" y="3" width="60" height="60" rx="14" fill="#FFFFFF" stroke="#161B33" stroke-width="4"/>
+  <path d="M21 15 V48 H50" fill="none" stroke="#161B33" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M27 42 C27 27 37 17 52 16 C52 31 42 41 27 42 Z" fill="#FFDF4A" stroke="#161B33" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M30 39 L45 24" stroke="#161B33" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

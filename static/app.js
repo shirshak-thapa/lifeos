@@ -5,7 +5,8 @@
 
 const $ = (id) => document.getElementById(id);
 let DEMO_DATE = "2026-10-12"; // replaced by the backend setting from /api/info
-const RUNWAY_DAYS = 35;       // the runway shows the next five weeks
+const RUNWAY_BACK = 7;        // the runway also shows the last 7 days...
+const RUNWAY_DAYS = 35;       // ...and the next five weeks
 
 const state = {
   files: [],
@@ -86,8 +87,12 @@ const postJSON = (path, body) =>
 // ---------- dates (parsed as LOCAL dates so they never shift by a day) ----------
 
 function parseDate(s) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str(s));
-  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+  // the backend always sends YYYY-MM-DD; build it as a LOCAL date (new Date("2026-10-19") would be UTC
+  // and can show the day before in some timezones). Anything after the date (a time) is ignored.
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/.exec(str(s).trim());
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]) ? d : null; // rejects 31 Feb
 }
 
 function daysFromDemo(s) {
@@ -164,60 +169,144 @@ function link(itemId, on) {
   for (const node of document.querySelectorAll(`.facts li[data-item="${CSS.escape(str(itemId))}"]`)) node.classList.toggle("linked", on);
 }
 
-// ---------- runway: the next five weeks at a glance ----------
+// ---------- runway: the last week and the next five weeks at a glance ----------
+
+const itemFiles = (it) => [...new Set((Array.isArray(it.sources) ? it.sources : []).map((s) => str(s.file)).filter(Boolean))];
 
 function renderRunway() {
+  hidePop(true);
   const box = $("runway");
   box.replaceChildren();
   const today = parseDate(DEMO_DATE);
-  const pos = (n) => `left:${((n / (RUNWAY_DAYS - 1)) * 100).toFixed(3)}%`;
+  const span = RUNWAY_BACK + RUNWAY_DAYS - 1;
+  const pct = (n) => (((n + RUNWAY_BACK) / span) * 100).toFixed(3);
+  const pos = (n) => `left:${pct(n)}%`;
 
+  box.append(el("span", { class: "past-zone", style: `width:${pct(0)}%` }, el("span", { text: "Last 7 days" })));
   box.append(el("span", { class: "track" }));
-  for (let n = 0; n < RUNWAY_DAYS; n++) {
+  for (let n = -RUNWAY_BACK; n < RUNWAY_DAYS; n++) {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + n);
     const dow = d.getDay();
     box.append(el("span", { class: `tick${dow === 1 ? " major" : ""}${dow === 0 || dow === 6 ? " weekend" : ""}`, style: pos(n) }));
-    if (dow === 1 && n > 0) {
+    if (dow === 1 && n !== 0) {
       box.append(el("span", { class: "tick-label", style: pos(n), text: d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) }));
     }
   }
   box.append(el("span", { class: "today", style: pos(0) }, el("span", { text: "Today" })));
 
+  // one pin per day; every event of that day is listed in its card
   const days = new Map();
-  let later = 0;
+  const earlier = [];
+  const later = [];
   for (const it of state.items) {
     const n = daysFromDemo(it.date);
-    if (n === null || n < 0) continue;
-    if (n >= RUNWAY_DAYS) { later++; continue; }
-    if (!days.has(n)) days.set(n, []);
-    days.get(n).push(it);
+    if (n === null) continue;
+    if (n < -RUNWAY_BACK) earlier.push(it);
+    else if (n >= RUNWAY_DAYS) later.push(it);
+    else {
+      if (!days.has(n)) days.set(n, []);
+      days.get(n).push(it);
+    }
   }
   for (const [n, list] of days) {
     list.sort(byDate);
     const conflict = list.some((i) => i.status === "conflict");
-    const edge = n < 4 ? " edge-left" : n > RUNWAY_DAYS - 6 ? " edge-right" : "";
-    box.append(el("button", {
-      type: "button", class: `pin ${conflict ? "conflict" : urgency(n)}${edge}`, style: pos(n),
-      "aria-label": `${fmtDate(list[0].date)}: ${list.map((i) => i.title).join(", ")}`,
-      onclick: () => scrollToItem(list[0].id),
-    }, String(list.length),
-    el("span", { class: "tip", "aria-hidden": "true" },
-      el("b", { text: `${fmtDate(list[0].date)} · ${relLabel(n)}` }),
-      list.map((i) => el("span", { text: `${i.status === "conflict" ? "Not confirmed: " : ""}${i.title}` })))));
+    const fresh = list.some((i) => state.flash.has(i.id));
+    const pin = el("button", {
+      type: "button", class: `pin ${conflict ? "conflict" : urgency(n)}${list.length > 1 ? " multi" : ""}${fresh ? " is-new" : ""}`,
+      style: pos(n), "aria-haspopup": "true", "aria-expanded": "false",
+      "aria-label": `${fmtDate(list[0].date)}, ${plural(list.length, "item", "items")}: ${list.map((i) => i.title).join("; ")}`,
+    }, String(list.length));
+    pin.addEventListener("mouseenter", () => showPop(pin, n, list, false));
+    pin.addEventListener("mouseleave", schedHide);
+    pin.addEventListener("focus", () => showPop(pin, n, list, false));
+    pin.addEventListener("blur", schedHide);
+    pin.addEventListener("click", (e) => { e.stopPropagation(); showPop(pin, n, list, true); });
+    box.append(pin);
   }
-  if (later) box.append(el("span", { class: "later", text: `+${later} later` }));
-  if (!state.items.some((i) => parseDate(i.date))) {
-    box.append(el("p", { class: "runway-empty", text: "Your deadlines will line up here." }));
+  if (!state.items.some((i) => parseDate(i.date))) box.append(el("p", { class: "runway-empty", text: "Dated events from your files will line up here." }));
+  else if (!days.size) box.append(el("p", { class: "runway-empty", text: "Nothing in these weeks. Your dates are listed below." }));
+  renderRunwayExtra(earlier, later);
+}
+
+function renderRunwayExtra(earlier, later) {
+  // dated events outside the runway are never dropped: they are listed here
+  const box = $("runway-extra");
+  box.replaceChildren();
+  const chip = (it, cls) => el("button", {
+    type: "button", class: `ev-chip ${cls}`, title: `${it.title} (from ${itemFiles(it).join(", ") || "a file"})`,
+    onclick: () => scrollToItem(it.id),
+  }, el("b", { text: fmtDate(it.date) }), el("span", { text: it.title }));
+  if (earlier.length) box.append(el("div", { class: "extra-group" }, el("span", { class: "extra-label", text: "Earlier" }), earlier.sort(byDate).map((it) => chip(it, "past"))));
+  if (later.length) box.append(el("div", { class: "extra-group" }, el("span", { class: "extra-label", text: "Later" }), later.sort(byDate).map((it) => chip(it, ""))));
+}
+
+// the card that opens on a pin: hover or focus shows it, a click keeps it open
+let popTimer = null;
+let popPinned = false;
+let popAnchor = null;
+
+function showPop(pin, n, list, pinned) {
+  clearTimeout(popTimer);
+  const pop = $("runway-pop");
+  if (pinned && popPinned && popAnchor === pin) { hidePop(true); return; } // a second click closes it
+  popPinned = pinned || (popPinned && popAnchor === pin);
+  if (popAnchor && popAnchor !== pin) popAnchor.setAttribute("aria-expanded", "false");
+  popAnchor = pin;
+  pin.setAttribute("aria-expanded", "true");
+  pop.replaceChildren(
+    el("p", { class: "pop-date", text: `${fmtDate(list[0].date)} · ${relLabel(n)}` }),
+    ...list.map((it) => el("button", { type: "button", class: "pop-item", onclick: () => { hidePop(true); scrollToItem(it.id); } },
+      el("b", { text: it.title }),
+      el("span", { text: [timeRange(it.time, it.end_time), it.location, `from ${itemFiles(it).join(", ") || "a file"}`].filter(Boolean).join(" · ") }),
+      it.status === "conflict" ? el("span", { class: "warn", text: "Date not confirmed: choose one in your plan" }) : null)));
+  pop.hidden = false;
+  // place it above the pin, kept inside the band
+  const wrap = pop.parentElement.getBoundingClientRect();
+  const p = pin.getBoundingClientRect();
+  const left = Math.max(8, Math.min(p.left + p.width / 2 - wrap.left - pop.offsetWidth / 2, wrap.width - pop.offsetWidth - 8));
+  pop.style.left = `${left}px`;
+  pop.style.top = `${p.top - wrap.top - pop.offsetHeight - 10}px`;
+  if (pinned) {
+    const first = pop.querySelector(".pop-item");
+    if (first) first.focus({ preventScroll: true });
   }
+}
+
+function schedHide() {
+  if (popPinned) return;
+  clearTimeout(popTimer);
+  popTimer = setTimeout(() => hidePop(false), 200);
+}
+
+function hidePop(force) {
+  clearTimeout(popTimer);
+  if (popPinned && !force) return;
+  popPinned = false;
+  $("runway-pop").hidden = true;
+  if (popAnchor) popAnchor.setAttribute("aria-expanded", "false");
+  popAnchor = null;
 }
 
 function renderBriefing() {
   const p = $("briefing");
   p.replaceChildren();
   if (!state.items.length) { p.textContent = "Nothing planned yet."; return; }
-  const week = state.items.filter((i) => { const n = daysFromDemo(i.date); return n !== null && n >= 0 && n <= 6; }).length;
+  const days = (i) => daysFromDemo(i.date);
+  const dated = state.items.filter((i) => days(i) !== null);
+  const week = dated.filter((i) => days(i) >= 0 && days(i) <= 6);
+  const recent = dated.filter((i) => days(i) < 0 && days(i) >= -RUNWAY_BACK);
+  const next = dated.filter((i) => days(i) > 6).sort(byDate)[0];
+  const short = (t) => (t.length > 42 ? `${t.slice(0, 40)}…` : t);
+  const parts = [];
+  if (week.length) parts.push(`${plural(week.length, "thing", "things")} due this week`);
+  else if (next) parts.push(`Nothing due this week. Next: ${short(next.title)}, ${fmtDate(next.date)}`);
+  else parts.push("Nothing due this week");
+  if (recent.length) parts.push(`${recent.length} in the last 7 days`);
+  const undated = state.items.length - dated.length;
+  if (undated) parts.push(`${undated} without a date`);
+  p.append(parts.join(" · "));
   const decide = state.items.filter((i) => i.status === "conflict").length;
-  p.append(week ? `${plural(week, "thing", "things")} due this week` : "Nothing due this week");
   if (decide) {
     p.append(" · ", el("button", {
       type: "button", class: "brief-link", text: `${decide === 1 ? "1 date needs" : `${decide} dates need`} your decision`,
@@ -747,6 +836,19 @@ for (const b of $("suggest").querySelectorAll("button")) {
   b.addEventListener("click", () => { $("question").value = b.textContent; ask(b.textContent); });
 }
 $("answer-close").addEventListener("click", () => { $("answer").hidden = true; });
+
+$("runway-pop").addEventListener("mouseenter", () => clearTimeout(popTimer));
+$("runway-pop").addEventListener("mouseleave", schedHide);
+$("runway-pop").addEventListener("focusin", () => clearTimeout(popTimer));
+document.addEventListener("click", (e) => { if (!$("runway-pop").contains(e.target)) hidePop(true); });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || $("runway-pop").hidden) return;
+  const anchor = popAnchor;
+  hidePop(true);
+  if (anchor) anchor.focus();
+});
+document.querySelector(".runway-scroll").addEventListener("scroll", () => hidePop(true), { passive: true });
+window.addEventListener("resize", () => hidePop(true));
 
 // "/" jumps to the search box
 document.addEventListener("keydown", (e) => {

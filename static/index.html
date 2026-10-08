@@ -5,16 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffe14d">
   <title>LifeOS</title>
-  <link rel="icon" type="image/png" href="logo-64.png">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <!-- The highlighter band: brand, drop tray, deadline runway -->
   <div class="band">
     <header class="wrap top">
-      <a class="brand" href="/">
-        <img src="logo-64.png" alt="" width="34" height="34">
-        <span>LifeOS</span>
+      <a class="brand" href="/" aria-label="LifeOS home">
+        <img src="lifeos-logo.svg" alt="LifeOS" width="153" height="44">
       </a>
       <nav class="top-actions">
         <a class="btn-outline" href="/api/calendar.ics" download id="export" aria-label="Export to calendar"><span data-icon="calendar"></span><span class="label">Export to calendar</span></a>
@@ -67,6 +66,8 @@
       <div class="runway-scroll">
         <div class="runway" id="runway"></div>
       </div>
+      <div class="runway-pop" id="runway-pop" hidden></div>
+      <div class="runway-extra" id="runway-extra"></div>
     </section>
   </div>
 

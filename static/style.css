@@ -60,8 +60,8 @@ mark { background: var(--marker); color: var(--ink); border-radius: 3px; padding
 /* ---------- the highlighter band ---------- */
 .band { background: var(--marker); border-bottom: 3px solid var(--ink); }
 .top { display: flex; align-items: center; gap: 1rem; min-height: 72px; }
-.brand { display: flex; align-items: center; gap: .6rem; color: var(--ink); text-decoration: none; font: 700 1.5rem/1 var(--display); letter-spacing: -.01em; }
-.brand img { border-radius: 50%; box-shadow: 0 0 0 2px var(--ink); }
+.brand { display: flex; align-items: center; border-radius: 10px; }
+.brand img { display: block; height: 44px; width: auto; }
 .top-actions { margin-left: auto; display: flex; align-items: center; gap: .4rem; }
 
 .hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto 1fr;
@@ -124,14 +124,14 @@ mark { background: var(--marker); color: var(--ink); border-radius: 3px; padding
 .q.error .q-status { grid-column: 1 / -1; color: var(--hot); white-space: normal; font: 500 .88rem var(--body); }
 
 /* ---------- the deadline runway ---------- */
-.runway-wrap { padding-bottom: 1.6rem; }
+.runway-wrap { position: relative; padding-bottom: 1.6rem; }
 .runway-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .runway-head h2 { font: 700 .9rem var(--display); letter-spacing: .14em; text-transform: uppercase; }
 .briefing { font: 600 1rem var(--display); letter-spacing: .01em; color: var(--ink-2); }
 .brief-link { border: 0; background: var(--ink); color: var(--marker); border-radius: 999px; padding: .1rem .65rem; font: inherit; }
 .brief-link:hover { background: var(--hot); color: #fff; }
 .runway-scroll { overflow-x: auto; margin: .2rem -.5rem 0; padding: 0 .5rem; scrollbar-width: thin; }
-.runway { position: relative; height: 104px; min-width: 860px; margin: 0 1rem; }
+.runway { position: relative; height: 104px; min-width: 980px; margin: 0 1rem; }
 .track { position: absolute; left: 0; right: 0; top: 58px; height: 3px; background: var(--ink); border-radius: 2px; }
 .tick { position: absolute; top: 53px; width: 2px; height: 13px; margin-left: -1px; background: rgba(18, 26, 51, .45); }
 .tick.weekend { background: rgba(18, 26, 51, .2); }
@@ -140,23 +140,45 @@ mark { background: var(--marker); color: var(--ink); border-radius: 3px; padding
 .today { position: absolute; top: 51px; width: 17px; height: 17px; margin-left: -8.5px; border-radius: 50%; background: var(--marker); border: 3px solid var(--ink); }
 .today span { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font: 700 .72rem var(--display); letter-spacing: .12em; text-transform: uppercase;
   background: var(--ink); color: var(--marker); padding: .05rem .4rem; border-radius: 4px; white-space: nowrap; }
-.pin { position: absolute; top: 10px; transform: translateX(-50%); width: 30px; height: 30px; padding: 0; border: 2px solid var(--ink); border-radius: 9px 9px 9px 2px;
-  background: var(--card); color: var(--ink); font: 700 .85rem var(--display); transition: transform .15s var(--ease); }
-.pin::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 18px; margin-left: -1px; background: var(--ink); }
+.past-zone { position: absolute; left: 0; top: 40px; height: 40px; border-radius: 6px 0 0 6px; background: rgba(18, 26, 51, .08); }
+.past-zone span { position: absolute; left: .4rem; top: -1.25rem; font: 700 .68rem var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
+.pin { position: absolute; top: 10px; transform: translateX(-50%); min-width: 28px; height: 28px; padding: 0 .3rem; border: 2px solid var(--ink);
+  border-radius: 9px 9px 9px 2px; background: var(--card); color: var(--ink); font: 700 .85rem var(--display); transition: transform .15s var(--ease); }
+.pin::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 20px; margin-left: -1px; background: var(--ink); }
 .pin.hot { background: var(--hot); color: #fff; }
 .pin.warm { background: var(--ink); color: var(--marker); }
 .pin.cool { background: var(--card); }
+.pin.past { background: var(--marker-soft); color: var(--ink-2); border-color: rgba(18, 26, 51, .5); }
 .pin.conflict { background: var(--hot); color: #fff; border-style: dashed; }
-.pin:hover, .pin:focus-visible { transform: translateX(-50%) translateY(-3px); z-index: 3; }
-.tip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); display: none; min-width: 12rem; max-width: 18rem;
-  padding: .55rem .7rem; background: var(--ink); color: #fff; border-radius: 8px; text-align: left; font: 500 .85rem/1.4 var(--body); z-index: 5; }
-.tip b { display: block; color: var(--marker); font: 700 .8rem var(--display); letter-spacing: .06em; text-transform: uppercase; margin-bottom: .15rem; }
-.tip span { display: block; }
-.pin:hover .tip, .pin:focus-visible .tip { display: block; }
-.pin.edge-left .tip { left: -4px; transform: none; }
-.pin.edge-right .tip { left: auto; right: -4px; transform: none; }
-.later { position: absolute; right: -1rem; top: 10px; font: 700 .85rem var(--display); background: var(--card); border: 2px solid var(--ink); border-radius: 999px; padding: .15rem .6rem; }
-.runway-empty { position: absolute; left: 3rem; top: 18px; font: 600 .95rem var(--display); color: var(--ink-2); }
+.pin.multi { box-shadow: 3px -3px 0 -1px var(--marker), 3px -3px 0 1px var(--ink); }   /* a stack: several events that day */
+.pin:hover, .pin:focus-visible, .pin[aria-expanded="true"] { transform: translateX(-50%) translateY(-3px); z-index: 3; }
+.pin.is-new { animation: pin-drop .55s var(--ease); }
+@keyframes pin-drop { from { transform: translateX(-50%) translateY(-16px) scale(.6); opacity: 0; } }
+.runway-empty { position: absolute; left: 22%; top: 14px; font: 600 .95rem var(--display); color: var(--ink-2); }
+
+/* the card that opens on a pin: every event that day, with its file */
+.runway-pop { position: absolute; z-index: 20; width: min(21rem, calc(100% - 1rem)); background: var(--ink); color: #fff; border-radius: 12px;
+  padding: .65rem .6rem .55rem; box-shadow: 5px 5px 0 rgba(18, 26, 51, .28); animation: rise .18s var(--ease); }
+.runway-pop :focus-visible { outline-color: var(--marker); }
+.pop-date { margin: 0 .4rem .3rem; color: var(--marker); font: 700 .78rem var(--display); letter-spacing: .08em; text-transform: uppercase; }
+.pop-item { display: block; width: 100%; text-align: left; background: none; border: 0; color: #fff; padding: .45rem .45rem; border-radius: 8px; }
+.pop-item + .pop-item { border-top: 1px solid rgba(255, 255, 255, .12); border-top-left-radius: 0; border-top-right-radius: 0; }
+.pop-item:hover, .pop-item:focus-visible { background: rgba(255, 255, 255, .1); }
+.pop-item b { display: block; font-weight: 650; line-height: 1.3; }
+.pop-item span { display: block; margin-top: .1rem; font-size: .82rem; color: #c5cbe0; overflow-wrap: anywhere; }
+.pop-item .warn { color: #ffb4a6; }
+
+/* dated events outside the runway */
+.runway-extra { display: flex; flex-wrap: wrap; gap: .5rem 1.6rem; margin-top: .5rem; }
+.runway-extra:empty { display: none; }
+.extra-group { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; min-width: 0; }
+.extra-label { font: 700 .74rem var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); margin-right: .1rem; }
+.ev-chip { display: inline-flex; align-items: baseline; gap: .45rem; max-width: 22rem; border: 1.5px solid var(--ink); background: var(--card);
+  border-radius: 999px; padding: .15rem .75rem; font-size: .86rem; transition: background-color .15s, color .15s; }
+.ev-chip b { font: 700 .82rem var(--display); white-space: nowrap; }
+.ev-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev-chip:hover { background: var(--ink); color: #fff; }
+.ev-chip.past { border-style: dashed; color: var(--ink-2); }
 
 /* ---------- content ---------- */
 .content { padding-top: 2.4rem; }
@@ -334,7 +356,7 @@ kbd { font: 600 .8rem var(--mono); color: var(--muted); border: 1.5px solid var(
 }
 @media (max-width: 640px) {
   .top { min-height: 60px; }
-  .brand { font-size: 1.25rem; }
+  .brand img { height: 38px; }
   .btn-outline .label, .btn-plain .label { display: none; }
   .btn-outline { padding: .45rem; }
   .tray { padding: 1.6rem 1rem 1.4rem; box-shadow: 5px 5px 0 var(--ink); }

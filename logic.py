@@ -66,22 +66,76 @@ def clean_text(value, limit, collapse=True):
     return s[:limit]
 
 
-def clean_date(value):
-    s = clean_text(value, 10)
-    if not s or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+MONTHS = {m: n for n, m in enumerate(("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1)}
+
+
+def _make_date(year, month, day, today):
+    """A real calendar date, or None. With no year: the next time it happens (the last 30 days still count)."""
+    if year is not None:
+        year = int(year)
+        year = year + 2000 if year < 100 else year
+        return date(year, month, day)
+    for y in (today.year - 1, today.year, today.year + 1):
+        try:
+            d = date(y, month, day)
+        except ValueError:
+            continue
+        if d >= today - timedelta(days=30):
+            return d
+    return None
+
+
+def clean_date(value, today=None):
+    """Turn the model's date into YYYY-MM-DD, or None. Accepts "2026-10-19", "2026-10-19T09:00Z", "10/19/2026",
+    "19.10.2026", "19 Oct", "October 19th", "Mon, 19 October 2026"... The date is kept as written:
+    no timezone conversion, so it can never shift by a day."""
+    s = clean_text(value, 60)
+    if not s:
         return None
+    today = today or date.fromisoformat(settings.DEMO_DATE)
+    s = s.lower().replace(",", " ")
     try:
-        date.fromisoformat(s)
-        return s
+        m = re.match(r"(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})", s)  # ISO first (also with a time after it)
+        if m:
+            return date(int(m[1]), int(m[2]), int(m[3])).isoformat()
+        s = re.sub(r"\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?", " ", s)  # weekday names add nothing
+        s = re.sub(r"(\d)(st|nd|rd|th)\b", r"\1", s)                       # 19th -> 19
+        s = " ".join(s.replace(" of ", " ").split())
+        m = re.fullmatch(r"(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?", s)
+        if m:  # 10/19/2026 is month-first; 19/10/2026 or an unclear 05/06/2026 is read day-first
+            a, b = int(m[1]), int(m[2])
+            month, day = (a, b) if b > 12 else (b, a)
+            d = _make_date(m[3], month, day, today)
+            return d.isoformat() if d else None
+        m = re.fullmatch(r"(\d{1,2}) ([a-z]+)\.?(?: (\d{2,4}))?", s) or re.fullmatch(r"([a-z]+)\.? (\d{1,2})(?: (\d{2,4}))?", s)
+        if m:
+            day, name = (m[1], m[2]) if m[1].isdigit() else (m[2], m[1])
+            month = MONTHS.get(name[:3])
+            if not month:
+                return None
+            d = _make_date(m[3], month, int(day), today)
+            return d.isoformat() if d else None
     except ValueError:
-        return None
+        return None  # e.g. 31 February
+    return None
 
 
 def clean_time(value):
-    m = re.fullmatch(r"(\d{1,2}):(\d{2})(?::\d{2})?", clean_text(value, 8) or "")
-    if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
+    """Turn "17:00", "5 PM", "11:59 p.m.", "9.30" or "noon" into HH:MM (24h), or None."""
+    s = (clean_text(value, 20) or "").lower().replace("a.m.", "am").replace("p.m.", "pm").replace(".", ":")
+    if s in ("noon", "midday"):
+        return "12:00"
+    m = re.fullmatch(r"(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*(am|pm)?", s)
+    if not m or not (m[2] or m[3]):
         return None
-    return f"{int(m.group(1)):02d}:{m.group(2)}"
+    hour, minute = int(m[1]), int(m[2] or 0)
+    if m[3]:
+        if not 1 <= hour <= 12:
+            return None
+        hour = hour % 12 + (12 if m[3] == "pm" else 0)
+    if hour > 23 or minute > 59:
+        return None
+    return f"{hour:02d}:{minute:02d}"
 
 
 LINK_RE = re.compile(r"(https?://\S+|www\.\S+|[\w.+-]+@[\w-]+\.[\w.]+|[\w-]+(\.[\w-]+)*\.(com|org|edu|net|io|ac\.\w+|edu\.\w+)(/\S*)?)", re.I)

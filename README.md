@@ -50,6 +50,8 @@ The fake sample files are in `demo_inputs/` (re-create them with `python make_de
 6. `prof_notice.png` → update: the assignment moves to Mon 19 Oct, with a history line
 7. `course_schedule.pdf` (3 pages) → lab report, exam, reading week and office hours. Ask: *What should I bring to the exam?*
 
+**Using your own files?** The app's "today" is the fixed demo date, Mon 12 Oct 2026, so the sample story always replays the same way. To count from the real date instead, add `LIFEOS_DEMO_DATE=today` to `.env` and restart (the samples then need the API again).
+
 Every AI answer is saved in `cache.json` (keyed by a hash of the input and the step), so this story **replays instantly and identically, even without an API key**. Set `LIFEOS_CACHE=0` to always call the model.
 
 Automatic check of the whole story: `python demo_test.py` (prints PASS/FAIL per step).
@@ -71,7 +73,6 @@ Automatic check of the whole story: `python demo_test.py` (prints PASS/FAIL per 
 - `settings.py`: model names, demo date, cache switch, source trust ranks
 - `static/`: the one-page front end (HTML, CSS, JavaScript; no build tools)
 - `make_demo_files.py`, `demo_inputs/`: the fake sample files
-- `make_logo_assets.py`: makes the round favicon from `static/logo.png`
 - `demo_test.py`: runs the demo story and prints PASS/FAIL
 - `data.json` (your plan) and `uploads/` (your files): local only, never committed
 

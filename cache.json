@@ -1,11 +1,6 @@
 {
- "answer:2e65c2d1ea32a92f8963162d": "On Sat 20 Jun 2030, there is the Voices Unheard event from 15:00 to 17:00 at the Civic Center Building, 381 W. Oakwood Street [pasted_screenshot.png].\nThe event features sharing of stories, snacks, refreshments, and music [pasted_screenshot.png].\nYou also have a task to register for Voices Unheard on Sat 20 Jun 2030 [pasted_screenshot.png].",
- "answer:2f4ea55cdc5cce2a49c46a02": "You should bring your student ID card and a calculator [course_schedule.pdf].",
- "answer:6e6079f8ba50de3eb2287e99": "Your files contain information about the Voices Unheard event celebrating World Refugee Day [pasted_screenshot.png].\nThe event features stories, music, and refreshments at the Civic Center Building [pasted_screenshot.png].\nOn Sat 20 Jun 2030, you have the Voices Unheard event from 15:00 to 17:00 [pasted_screenshot.png].\nOn Sat 20 Jun 2030, you also need to register for Voices Unheard [pasted_screenshot.png].",
  "answer:879d742a685a597823a9b49f": "You need to submit your Physics 101 assignment, but the date is not confirmed: Thu 15 Oct [assignment_brief.pdf] or Fri 16 Oct [classmate_chat.png].",
- "answer:9ee1c94a898462d6bbbe703b": "I couldn't find that in your files.",
  "answer:b3803846c38a0dcf64edd6fd": "You should bring your student ID card and a calculator [course_schedule.pdf].",
- "answer:f354390078567c42d3c22557": "I couldn't find that in your files.",
  "answer:f6912854161308789812ec39": "You need to submit your Physics 101 assignment by Thu 15 Oct at 23:59 [assignment_brief.pdf].\nYou also need to ask Ram for the presentation slides [note.png].",
  "extract:1a42fc0beeb562632b817ae0": {
   "items": [
@@ -38,32 +33,6 @@
   ],
   "source": "official",
   "summary": "A notice regarding the Physics presentation day for all PHYS 101 groups. Students need to be prepared to present on Tuesday, 20 October."
- },
- "extract:4f768c0284d99c6a3aa90d79": {
-  "items": [
-   {
-    "date": "2030-06-20",
-    "end_time": "17:00",
-    "link": "events@helpinghands.com",
-    "location": "Civic Center Building, 381 W. Oakwood Street",
-    "quote": "VOICES UNHEARD in Celebration of World Refugee Day Helping Hands ORGANIZATION \"We amplify the voices of refugees and those who have been displaced.\" Madeline Pierre Human Rights Advocate June 20, 2030 3:00 - 5:00 PM Civic Center Building 381 W. Oakwood Street",
-    "time": "15:00",
-    "title": "Voices Unheard event",
-    "type": "event"
-   },
-   {
-    "date": "2030-06-20",
-    "end_time": null,
-    "link": null,
-    "location": null,
-    "quote": "SCAN TO REGISTER:",
-    "time": null,
-    "title": "Register for Voices Unheard",
-    "type": "task"
-   }
-  ],
-  "source": "official",
-  "summary": "A poster for the 'Voices Unheard' event celebrating World Refugee Day. The event features stories, music, and refreshments at the Civic Center Building."
  },
  "extract:50f10008c5371cae2d9c66c3": [
   {
@@ -145,22 +114,6 @@
   "source": "official",
   "summary": "This is an assignment notice for PHYS 101 - Mechanics regarding Newton's laws of motion. Students must submit their answers as a single PDF via the student portal by the deadline."
  },
- "extract:e0c314e3284e0752722949ce": {
-  "items": [
-   {
-    "date": "2026-10-10",
-    "end_time": "17:00",
-    "link": "www.backtoschoolevent.com",
-    "location": "Natural Bridge Grounds",
-    "quote": "BACK TO SCHOOL EVENT SUNDAY OCTOBER 10 | AT NATURAL BRIDGE GROUNDS",
-    "time": "14:00",
-    "title": "Back to School Event",
-    "type": "event"
-   }
-  ],
-  "source": "official",
-  "summary": "A Back to School event featuring music, giveaways, and games. It takes place on Sunday, October 10 at Natural Bridge Grounds."
- },
  "extract:f730c901ed9e46079a0394dc": {
   "items": [
    {
@@ -187,22 +140,19 @@
   "source": "classmate",
   "summary": "A message from Aarav regarding upcoming deadlines for Physics 101. The student needs to submit an assignment by this Friday and prepare for a presentation on Tuesday the 20th."
  },
- "match:0f9517898f329089c9215331": {
-  "match_id": null,
-  "reason": "The new item is a lab report submission, which is a distinct task from the physics assignment and the presentation.",
-  "verdict": "new"
- },
- "match:1841df194de4090de2967c6c": {
+ "match:0432fdeec7b03fa3b7940cdd": {
   "match_id": "item2",
-  "reason": "The new item is the same event as item2, providing additional details like time and location.",
-  "verdict": "same"
+  "reason": "The presentation is a separate event related to the Physics 101 course content.",
+  "verdict": "related"
  },
- "match:1f07cb47714ae2da99994008": {
-  "match_id": null,
-  "reason": "The mid-semester exam is a distinct academic event from the assignment and the presentation.",
-  "verdict": "new"
- },
- "match:2a11efc3a6212ef2c52031ef": {
+ "match:060cf9a64f9a170672f7a93b": [
+  {
+   "match_id": "item2",
+   "reason": "The new item refers to the same physics assignment but provides a different due date without indicating a change.",
+   "verdict": "conflict"
+  }
+ ],
+ "match:0f9517898f329089c9215331": {
   "match_id": null,
   "reason": "The new item is a lab report submission, which is a distinct task from the physics assignment and the presentation.",
   "verdict": "new"
@@ -212,6 +162,13 @@
   "reason": "The new item is the same physics assignment but the quote explicitly states the deadline has been extended to a new date.",
   "verdict": "update"
  },
+ "match:4084b3fb877a43073a784c4b": [
+  {
+   "match_id": null,
+   "reason": "The new item is a physics assignment task, which is unrelated to the existing school event.",
+   "verdict": "new"
+  }
+ ],
  "match:50ed2e78dbc885349ef6cb8b": {
   "match_id": "item2",
   "reason": "Asking for slides is a preparatory task for the upcoming PHYS 101 Presentation Day.",
@@ -222,6 +179,13 @@
    "match_id": "item2",
    "reason": "Asking for slides is a preparatory task for the upcoming PHYS 101 Presentation Day.",
    "verdict": "related"
+  }
+ ],
+ "match:6d5da2701fba27b82d0adf5e": [
+  {
+   "match_id": null,
+   "reason": "The new item is a separate event regarding office hours and does not relate to the physics presentation or assignment.",
+   "verdict": "new"
   }
  ],
  "match:978cb4ed7f82a7480567a6f2": {
@@ -239,30 +203,42 @@
   "reason": "The new item provides specific time and location details for the existing Physics 101 presentation on the same date.",
   "verdict": "same"
  },
+ "match:b8e9ea88a4f493567457c52b": [
+  {
+   "match_id": null,
+   "reason": "The new item is a lab report submission, which is a different task from the presentation or the physics assignment.",
+   "verdict": "new"
+  }
+ ],
  "match:c32c6a71eb272c56a67448b4": {
   "match_id": "item1",
   "reason": "Both items refer to the Physics 101 assignment but specify different due dates (2026-10-16 vs 2026-10-15) without indicating a change.",
   "verdict": "conflict"
+ },
+ "match:c5a8ded91b89946ffc4c3f02": [
+  {
+   "match_id": null,
+   "reason": "The new item is a task for an assignment, whereas the existing item is an event for a presentation.",
+   "verdict": "new"
+  }
+ ],
+ "match:cb2b13ce2705202addead75b": {
+  "match_id": null,
+  "reason": "Reading week is a separate academic period and does not refer to the physics presentation or assignment.",
+  "verdict": "new"
  },
  "match:eba41ee079af97453e3008cb": {
   "match_id": null,
   "reason": "The new item is a separate event regarding office hours and does not relate to the physics assignment or presentation.",
   "verdict": "new"
  },
- "match:f0b4ed4d3b10b2882ad2f3a4": {
+ "match:ecae0f1ceaeef820589f4aa1": {
   "match_id": null,
-  "reason": "Reading week is a separate academic period and does not refer to any existing tasks or events.",
-  "verdict": "new"
- },
- "match:fa3647242667c0412a17935c": {
-  "match_id": null,
-  "reason": "Prof. Sharma's office hours is a completely different subject from the existing physics tasks and events.",
+  "reason": "The mid-semester exam is a distinct event from the presentation and the assignment.",
   "verdict": "new"
  },
  "read:0d46243aa4416b2c3ef43f5f": "University Notice Board - Department of Physics\n\nDear students, the Physics Assignment 3 deadline has been\nextended to Monday, 19 October.\n\n- Prof. Sharma",
  "read:23c3d1a50a006f52c5c7c5d9": "Physics\nPresentation Day\n\nTuesday 20 October 2026\n10:00 AM\nRoom 204\n\nAll PHYS 101 groups present",
- "read:6ba4e6a8a298ba25201af8c1": "HELPING HANDS PRESENTS\nVOICES UNHEARD\nin Celebration of World Refugee Day\nHelping Hands\nORGANIZATION\n\"We amplify the voices of\nrefugees and those who\nhave been displaced.\"\nMadeline Pierre\nHuman Rights Advocate\nJune 20, 2030\n3:00 - 5:00 PM\nCivic Center Building\n381 W. Oakwood Street\nSharing of stories | Snacks |\nRefreshments | Music\nSponsors:\nJODIE FOUNDATION\nA Nonprofit Organization\nHR Solutions\nSCAN TO\nREGISTER:\nFor more information contact us at events@helpinghands.com or call\nus at 583-493-3910 ext. 452. Join us in supporting refugee rights.\n#WorldRefugeeDay #WithRefugees",
  "read:849e0e9cc6342af501d0f556": "Physics 101 Group\n\nAarav (classmate)\nguys physics assignment due this friday!! and our presentation is on tuesday 20th\n9:41 AM",
- "read:b121e630678344ad7056fa39": "BACK TO\nSCHOOL\nEVENT\nSUNDAY OCTOBER 10 | AT NATURAL BRIDGE GROUNDS\nEvents include:\nlive music - backpack giveaways - school supplies -\nfood & drinks - fun games\nTIME: 02:00 PM - 05:00 PM - TICKET: $9 PP\nTICKETS ARE AVAILABLE ONLINE |\nwww.backtoschoolevent.com",
  "read:d3cb7dc255c7c9951f08435d": "Ask Ram for the presentation\nslides"
 }
